@@ -1,0 +1,28 @@
+package com.slouka.app.account.validation
+
+import android.util.Patterns
+import javax.inject.Inject
+
+class AuthFormValidator @Inject constructor() {
+    fun validateLogin(email: String, password: String): Map<FormField, String> = buildMap {
+        if (!Patterns.EMAIL_ADDRESS.matcher(email.trim()).matches()) {
+            put(FormField.EMAIL, "Enter a valid email address.")
+        }
+        if (password.isBlank()) put(FormField.PASSWORD, "Enter a password.")
+    }
+
+    fun validateRegistration(
+        email: String,
+        name: String,
+        password: String,
+        passwordConfirmation: String
+    ): Map<FormField, String> = buildMap {
+        putAll(validateLogin(email, password))
+        if (name.isBlank()) put(FormField.NAME, "Enter your name.")
+        if (password != passwordConfirmation) {
+            put(FormField.CONFIRMATION, "Passwords must match.")
+        } else if (passwordConfirmation.isBlank()) {
+            put(FormField.CONFIRMATION, "Confirm your password.")
+        }
+    }
+}

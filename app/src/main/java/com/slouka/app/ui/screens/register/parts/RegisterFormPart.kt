@@ -1,7 +1,5 @@
 package com.slouka.app.ui.screens.register.parts
 
-import android.util.Patterns
-
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -22,7 +20,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -38,7 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.slouka.app.ui.animations.UnrollCardAnimation
 import com.slouka.app.ui.animations.rememberInvalidInputFeedback
-import com.slouka.app.ui.screens.register.model.FormField
+import com.slouka.app.account.validation.FormField
 import com.slouka.app.ui.screens.register.model.RegisterViewEvent
 import com.slouka.app.ui.screens.register.model.RegisterViewState
 import com.slouka.app.ui.views.buttons.AnimatedBottomButton
@@ -57,25 +54,7 @@ fun RegisterFormPart(
 ) {
     val focusManager = LocalFocusManager.current
     val canEdit = !state.isLoading && !state.isRegistrationAccepted
-    var password by rememberSaveable { mutableStateOf("") }
-    var passwordConfirmation by rememberSaveable { mutableStateOf("") }
-
-    var submitted by rememberSaveable { mutableStateOf(false) }
-    var invalidAttempt by rememberSaveable { mutableIntStateOf(0) }
-    var shakenFields by remember { mutableStateOf(emptySet<FormField>()) }
-    val feedback = rememberInvalidInputFeedback(invalidAttempt)
-    val errors = buildMap {
-        if (!Patterns.EMAIL_ADDRESS.matcher(state.email.trim()).matches()) {
-            put(FormField.EMAIL, "Enter a valid email address.")
-        }
-        if (state.name.isBlank()) put(FormField.NAME, "Enter your name.")
-        if (password.isBlank()) put(FormField.PASSWORD, "Enter a password.")
-        if (password != passwordConfirmation) {
-            put(FormField.CONFIRMATION, "Passwords must match.")
-        } else if (passwordConfirmation.isBlank()) {
-            put(FormField.CONFIRMATION, "Confirm your password.")
-        }
-    }
+    val feedback = Modifier.rememberInvalidInputFeedback(state.invalidAttempt)
 
     var cardVisibility by rememberSaveable { mutableStateOf(false) }
     var registerButtonVisibility by rememberSaveable { mutableStateOf(false) }
@@ -111,12 +90,8 @@ fun RegisterFormPart(
                     state = state,
                     showSignature = showSignature,
                     canEdit = canEdit,
-                    errors = if (submitted) errors else emptyMap(),
-                    fieldFeedback = { field -> if (field in shakenFields) feedback else Modifier },
-                    password = password,
-                    passwordConfirmation = passwordConfirmation,
-                    onPasswordChange = { password = it },
-                    onPasswordConfirmationChange = { passwordConfirmation = it },
+                    errors = state.fieldErrors,
+                    fieldFeedback = { field -> if (field in state.shakenFields) feedback else Modifier },
                     onEvent = event
                 )
             }
@@ -126,14 +101,8 @@ fun RegisterFormPart(
             onEnterFinished = { buttonEntered = true },
             visible = registerButtonVisibility && canEdit,
             onClick = {
-                submitted = true
-                if (errors.isEmpty()) {
-                    focusManager.clearFocus()
-                    event(RegisterViewEvent.RegisterClicked(password))
-                } else {
-                    shakenFields = errors.keys
-                    invalidAttempt++
-                }
+                focusManager.clearFocus()
+                event(RegisterViewEvent.RegisterClicked)
             },
             text = "Register",
             enabled = canEdit,
@@ -149,10 +118,6 @@ private fun RegistrationFormCard(
     canEdit: Boolean,
     errors: Map<FormField, String>,
     fieldFeedback: (FormField) -> Modifier,
-    password: String,
-    passwordConfirmation: String,
-    onPasswordChange: (String) -> Unit,
-    onPasswordConfirmationChange: (String) -> Unit,
     onEvent: (RegisterViewEvent) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -213,8 +178,8 @@ private fun RegistrationFormCard(
             TextDivider(text = "AND", thickness = 4.dp, modifier = Modifier.padding(bottom = 6.dp))
 
             PasswordField(
-                value = password,
-                onValueChange = onPasswordChange,
+                value = state.password,
+                onValueChange = { onEvent(RegisterViewEvent.PasswordChanged(it)) },
                 label = "Password",
                 error = errors[FormField.PASSWORD],
                 enabled = canEdit,
@@ -225,8 +190,8 @@ private fun RegistrationFormCard(
             )
 
             PasswordField(
-                value = passwordConfirmation,
-                onValueChange = onPasswordConfirmationChange,
+                value = state.passwordConfirmation,
+                onValueChange = { onEvent(RegisterViewEvent.PasswordConfirmationChanged(it)) },
                 label = "Again password",
                 error = errors[FormField.CONFIRMATION],
                 enabled = canEdit,

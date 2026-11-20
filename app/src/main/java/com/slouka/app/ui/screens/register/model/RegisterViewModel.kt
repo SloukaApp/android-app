@@ -3,6 +3,7 @@ package com.slouka.app.ui.screens.register.model
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.slouka.app.account.AccountRepository
+import com.slouka.app.account.validation.AuthFormValidator
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,7 +15,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class RegisterViewModel @Inject constructor(
-    private val accountRepository: AccountRepository
+    private val accountRepository: AccountRepository,
+    private val validator: AuthFormValidator
 ) : ViewModel() {
     private var verificationNavigationSent = false
     private val mViewEffect = Channel<RegisterViewEffect>(Channel.BUFFERED)
@@ -25,13 +27,13 @@ class RegisterViewModel @Inject constructor(
 
     fun onEvent(event: RegisterViewEvent) {
         when (event) {
-            is RegisterViewEvent.EmailChanged -> {
-                this.mViewState.update { it.copy(email = event.email, isLoading = false) }
+            is RegisterViewEvent.EmailChanged -> this.editForm { it.copy(email = event.email) }
+            is RegisterViewEvent.NameChanged -> this.editForm { it.copy(name = event.name) }
+            is RegisterViewEvent.PasswordChanged -> this.editForm { it.copy(password = event.password) }
+            is RegisterViewEvent.PasswordConfirmationChanged -> this.editForm {
+                it.copy(passwordConfirmation = event.password)
             }
-            is RegisterViewEvent.NameChanged -> {
-                this.mViewState.update { it.copy(name = event.name, isLoading = false) }
-            }
-            is RegisterViewEvent.RegisterClicked -> this.register(event.password)
+            is RegisterViewEvent.RegisterClicked -> this.register()
 
             is RegisterViewEvent.CodeChanged -> {
                 this.mViewState.update {
@@ -67,7 +69,7 @@ class RegisterViewModel @Inject constructor(
             is RegisterViewEvent.ClubSignatureShown -> {
                 this.mViewState.update {
                     if (it.step == RegisterViewStep.REGISTER_FORM && it.isRegistrationAccepted) {
-                        it.copy(step = RegisterViewStep.VERIFICATION)
+                        it.copy(step = RegisterViewStep.VERIFICATION, password = "", passwordConfirmation = "")
                     } else {
                         it
                     }
@@ -83,24 +85,56 @@ class RegisterViewModel @Inject constructor(
             }
             is RegisterViewEvent.BackToRegistrationForm -> {
                 this.mViewState.update {
-                    RegisterViewState(email = it.email, name = it.name)
+                    RegisterViewState(email = it.email, name = it.name, invalidAttempt = it.invalidAttempt)
                 }
             }
         }
     }
 
-    fun register(password: String) {
+    private fun editForm(edit: (RegisterViewState) -> RegisterViewState) {
+        this.mViewState.update { current ->
+            if (current.step != RegisterViewStep.REGISTER_FORM || current.isLoading ||
+                current.isRegistrationAccepted
+            ) return@update current
+
+            val edited = edit(current)
+            if (!edited.showFieldErrors) edited
+            else edited.copy(fieldErrors = validateForm(edited))
+        }
+    }
+
+    private fun validateForm(state: RegisterViewState) = this.validator.validateRegistration(
+        email = state.email,
+        name = state.name,
+        password = state.password,
+        passwordConfirmation = state.passwordConfirmation
+    )
+
+    private fun register() {
         val current = this.state.value
         if (current.step != RegisterViewStep.REGISTER_FORM || current.isLoading ||
             current.isRegistrationAccepted
         ) return
 
-        this.mViewState.update { it.copy(isLoading = true) }
+        val errors = validateForm(current)
+        if (errors.isNotEmpty()) {
+            this.mViewState.update {
+                it.copy(
+                    showFieldErrors = true,
+                    fieldErrors = errors,
+                    shakenFields = errors.keys,
+                    invalidAttempt = it.invalidAttempt + 1
+                )
+            }
+            return
+        }
+
+        this.mViewState.update { it.copy(isLoading = true, fieldErrors = emptyMap()) }
         this.viewModelScope.launch {
             val result = this@RegisterViewModel.accountRepository.register(
-                email = this@RegisterViewModel.state.value.email,
-                name = this@RegisterViewModel.state.value.name,
-                password = password
+                email = current.email,
+                name = current.name,
+                password = current.password
             )
 
             result.onSuccess {

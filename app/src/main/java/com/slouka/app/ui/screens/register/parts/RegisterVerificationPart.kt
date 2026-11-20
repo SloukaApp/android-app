@@ -47,6 +47,7 @@ import com.slouka.app.ui.screens.register.model.RegisterViewState
 import com.slouka.app.ui.views.fields.OtpCodeField
 import kotlinx.coroutines.delay
 import kotlin.random.Random
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun RegisterVerificationPart(
@@ -172,7 +173,7 @@ private fun VerificationLetter(
                 cellSize = cellSize,
                 animateCells = false,
                 isError = state.codeError != null,
-                modifier = rememberInvalidInputFeedback(
+                modifier = Modifier.rememberInvalidInputFeedback(
                     if (state.codeError != null) state.invalidCodeAttempt else 0
                 )
             )
@@ -204,7 +205,7 @@ private fun VerificationStamp(onFinished: () -> Unit) {
 
     LaunchedEffect(Unit) {
         impression.animateTo(1f, tween(220))
-        delay(650)
+        delay(650.milliseconds)
         onFinished()
     }
 

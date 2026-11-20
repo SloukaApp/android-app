@@ -10,3 +10,6 @@ data object RegisterRoute
 
 @Serializable
 data object HomeRoute
+
+@Serializable
+data object SessionsRoute

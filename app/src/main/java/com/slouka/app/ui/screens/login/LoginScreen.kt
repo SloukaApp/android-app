@@ -10,6 +10,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -26,6 +27,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
@@ -33,11 +35,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -49,6 +53,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
+import com.slouka.app.account.validation.FormField
+import com.slouka.app.ui.animations.rememberInvalidInputFeedback
 import com.slouka.app.ui.screens.login.model.LoginViewEffect
 import com.slouka.app.ui.screens.login.model.LoginViewEvent
 import com.slouka.app.ui.screens.login.model.LoginViewModel
@@ -58,7 +64,9 @@ import com.slouka.app.ui.views.bars.ProgressTopAppBar
 import com.slouka.app.ui.views.buttons.AnimatedBottomButton
 import com.slouka.app.ui.views.dividers.TextDivider
 import com.slouka.app.ui.views.fields.PasswordField
+import com.slouka.app.ui.views.snackbars.ErrorSnackbarHost
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -68,9 +76,15 @@ fun SharedTransitionScope.LoginScreen(
     event: (LoginViewEvent) -> Unit,
     onRegisterClick: () -> Unit,
     visibilityScope: AnimatedVisibilityScope,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onHomeShortcut: () -> Unit = {},
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
 ) {
-    var password by rememberSaveable { mutableStateOf("") }
+    val focusManager = LocalFocusManager.current
+    val feedback = Modifier.rememberInvalidInputFeedback(state.invalidAttempt)
+    val emailError = state.fieldErrors[FormField.EMAIL]
+    val emailFeedback = if (FormField.EMAIL in state.shakenFields) feedback else Modifier
+    val passwordFeedback = if (FormField.PASSWORD in state.shakenFields) feedback else Modifier
     var clubCardVisibility by rememberSaveable { mutableStateOf(false) }
     var loginButtonVisibility by rememberSaveable { mutableStateOf(false) }
     var showTopBarBackground by rememberSaveable { mutableStateOf(false) }
@@ -87,6 +101,7 @@ fun SharedTransitionScope.LoginScreen(
 
     Scaffold(
         modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        snackbarHost = { ErrorSnackbarHost(snackbarHostState) },
         topBar = {
             ProgressTopAppBar(
                 showBackground = showTopBarBackground,
@@ -130,6 +145,7 @@ fun SharedTransitionScope.LoginScreen(
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier
+                                .combinedClickable(onClick = {}, onLongClick = onHomeShortcut)
                                 .alpha(0.5f)
                                 .padding(bottom = 8.dp)
                         )
@@ -145,18 +161,21 @@ fun SharedTransitionScope.LoginScreen(
                             ),
                             enabled = !state.isLoading,
                             leadingIcon = { Icon(Icons.Rounded.Email, null) },
-                            modifier = Modifier
+                            isError = emailError != null,
+                            supportingText = emailError?.let { message -> { Text(message) } },
+                            modifier = emailFeedback
                                 .fillMaxWidth()
                                 .padding(bottom = 6.dp)
                         )
 
                         PasswordField(
-                            value = password,
-                            onValueChange = { password = it },
+                            value = state.password,
+                            onValueChange = { event(LoginViewEvent.PasswordChanged(it)) },
                             label = "Password",
                             enabled = !state.isLoading,
                             imeAction = ImeAction.Done,
-                            modifier = Modifier.fillMaxWidth()
+                            error = state.fieldErrors[FormField.PASSWORD],
+                            modifier = passwordFeedback.fillMaxWidth()
                         )
                     }
                 }
@@ -191,7 +210,10 @@ fun SharedTransitionScope.LoginScreen(
 
             AnimatedBottomButton(
                 visible = loginButtonVisibility && !state.isLoading,
-                onClick = { event(LoginViewEvent.LoginClicked(password)) },
+                onClick = {
+                    focusManager.clearFocus()
+                    event(LoginViewEvent.LoginClicked)
+                },
                 text = "Log in",
                 enabled = !state.isLoading,
                 bottomPadding = innerPadding.calculateBottomPadding()
@@ -210,11 +232,15 @@ fun SharedTransitionScope.LoginScreenRoot(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val lifecycleOwner = LocalLifecycleOwner.current
+    val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(viewModel.effect, lifecycleOwner) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             viewModel.effect.collect { effect ->
                 when (effect) {
+                    is LoginViewEffect.ShowError -> this@repeatOnLifecycle.launch {
+                        snackbarHostState.showSnackbar(effect.message)
+                    }
                     is LoginViewEffect.NavigateToHome -> onNavigateToHome()
                 }
             }
@@ -226,7 +252,9 @@ fun SharedTransitionScope.LoginScreenRoot(
         event = viewModel::onEvent,
         onRegisterClick = onNavigateToRegister,
         visibilityScope = visibilityScope,
-        modifier = modifier
+        modifier = modifier,
+        snackbarHostState = snackbarHostState,
+        onHomeShortcut = onNavigateToHome
     )
 }
 

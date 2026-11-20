@@ -9,6 +9,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.slouka.app.ui.screens.home.HomeScreenRoot
+import com.slouka.app.ui.screens.sessions.SessionsScreenRoot
 import com.slouka.app.ui.screens.login.LoginScreenRoot
 import com.slouka.app.ui.screens.register.RegisterScreenRoot
 import androidx.compose.animation.EnterTransition
@@ -60,7 +61,11 @@ fun SloukaNavigation() {
             }
 
             composable<HomeRoute> {
-                HomeScreenRoot()
+                HomeScreenRoot(onSessionsClick = { controller.navigate(SessionsRoute) })
+            }
+
+            composable<SessionsRoute> {
+                SessionsScreenRoot(onBack = { controller.popBackStack() })
             }
         }
     }
