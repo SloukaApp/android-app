@@ -3,10 +3,11 @@ package com.slouka.app.ui.screens.login.model
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.slouka.app.account.AccountRepository
-import com.slouka.app.account.exceptions.LoginException
+import com.slouka.app.account.exceptions.AccountRequestException
 import com.slouka.app.account.validation.AuthFormValidator
 import com.slouka.app.account.validation.FormField
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.net.HttpURLConnection.HTTP_UNAUTHORIZED
 import javax.inject.Inject
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,7 +15,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import retrofit2.HttpException
 
 @HiltViewModel
 class LoginViewModel @Inject constructor(
@@ -23,6 +23,7 @@ class LoginViewModel @Inject constructor(
 ) : ViewModel() {
     private val mViewEffect = Channel<LoginViewEffect>(Channel.BUFFERED)
     private val mViewState = MutableStateFlow(LoginViewState())
+    private var mNavigationSent = false
 
     val effect = this.mViewEffect.receiveAsFlow()
     val state = this.mViewState.asStateFlow()
@@ -32,6 +33,7 @@ class LoginViewModel @Inject constructor(
             is LoginViewEvent.EmailChanged -> this.editForm { it.copy(email = event.email) }
             is LoginViewEvent.PasswordChanged -> this.editForm { it.copy(password = event.password) }
             is LoginViewEvent.LoginClicked -> this.login()
+            is LoginViewEvent.SuccessAnimationFinished -> this.openHome()
         }
     }
 
@@ -66,11 +68,16 @@ class LoginViewModel @Inject constructor(
 
             result.onSuccess {
                 this@LoginViewModel.mViewState.update {
-                    it.copy(isLoading = false, isLoginSuccessful = true, password = "")
+                    it.copy(
+                        isLoading = false,
+                        isLoginSuccessful = true,
+                        password = "",
+                        acceptedPasswordLength = current.password.length
+                    )
                 }
-                this@LoginViewModel.mViewEffect.send(LoginViewEffect.NavigateToHome)
             }.onFailure { failure ->
-                val message = if (failure is LoginException || (failure is HttpException && failure.code() == 401)) {
+                val requestFailure = failure as? AccountRequestException
+                val message = if (requestFailure?.statusCode == HTTP_UNAUTHORIZED) {
                     this@LoginViewModel.mViewState.update {
                         it.copy(
                             isLoading = false,
@@ -81,10 +88,18 @@ class LoginViewModel @Inject constructor(
                     "Email or password is incorrect. Please try again."
                 } else {
                     this@LoginViewModel.mViewState.update { it.copy(isLoading = false) }
-                    "Could not log in. Please try again."
+                    requestFailure?.detailMessage ?: "Could not log in. Please try again."
                 }
                 this@LoginViewModel.mViewEffect.send(LoginViewEffect.ShowError(message))
             }
+        }
+    }
+
+    private fun openHome() {
+        if (!this.state.value.isLoginSuccessful || this.mNavigationSent) return
+        this.mNavigationSent = true
+        this.viewModelScope.launch {
+            this@LoginViewModel.mViewEffect.send(LoginViewEffect.NavigateToHome)
         }
     }
 }

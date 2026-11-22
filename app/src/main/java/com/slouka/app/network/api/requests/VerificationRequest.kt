@@ -5,6 +5,9 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class VerificationRequest(
-    @SerialName("code")
+    @SerialName("email")
+    val email: String,
+
+    @SerialName("token")
     val code: String
 )

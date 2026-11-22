@@ -20,6 +20,7 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.TopAppBarDefaults
@@ -32,6 +33,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -40,6 +43,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
+import com.slouka.app.ui.animations.authPanel
+import com.slouka.app.ui.animations.authPanelProgress
 import com.slouka.app.ui.screens.register.model.RegisterViewEffect
 import com.slouka.app.ui.screens.register.model.RegisterViewEvent
 import com.slouka.app.ui.screens.register.model.RegisterViewModel
@@ -67,6 +72,9 @@ fun SharedTransitionScope.RegisterScreen(
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
     var progressIsIndeterminate by remember { mutableStateOf(false) }
     var showTopBarIcons by rememberSaveable { mutableStateOf(false) }
+    val panelProgress = visibilityScope.authPanelProgress(openOnExit = state.isEmailVerified)
+    val background = MaterialTheme.colorScheme.background
+    val panelColor = MaterialTheme.colorScheme.surfaceContainer
 
     val cornerRadius by visibilityScope.transition.animateDp(
         transitionSpec = { tween(500) },
@@ -102,10 +110,11 @@ fun SharedTransitionScope.RegisterScreen(
         },
         topBar = {
             ProgressTopAppBar(
+                modifier = authPanel(panelProgress, upward = true),
                 showBackground = showTopBarIcons,
                 visibilityScope = visibilityScope,
                 backgroundEnterDelayMillis = 800,
-                sharedTransitionScope = this,
+                sharedTransitionScope = if (state.isEmailVerified) null else this,
                 title = "Register",
                 backgroundIconSize = 48.dp,
                 onProgressIndeterminateChanged = { progressIsIndeterminate = it },
@@ -149,7 +158,12 @@ fun SharedTransitionScope.RegisterScreen(
                         state = state,
                         showStamp = state.isEmailVerified && !progressIsIndeterminate,
                         event = event,
-                        innerPadding = innerPadding
+                        innerPadding = innerPadding,
+                        modifier = authPanel(panelProgress, upward = false)
+                            .drawBehind {
+                                val tint = ((panelProgress?.value ?: 0f) * 3f).coerceAtMost(0.65f)
+                                drawRect(lerp(background, panelColor, tint))
+                            }
                     )
                 }
             }
@@ -201,7 +215,6 @@ fun RegisterScreenPreview() {
                 RegisterScreen(
                     state = RegisterViewState(
                         email = "example@gmail.com",
-                        name = "God",
                         isLoading = false
                     ),
                     event = {},

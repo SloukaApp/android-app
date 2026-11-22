@@ -13,16 +13,19 @@ class AuthFormValidator @Inject constructor() {
 
     fun validateRegistration(
         email: String,
-        name: String,
         password: String,
-        passwordConfirmation: String
+        passwordConfirmation: String,
+        isConsentActive: Boolean
     ): Map<FormField, String> = buildMap {
-        putAll(validateLogin(email, password))
-        if (name.isBlank()) put(FormField.NAME, "Enter your name.")
+        putAll(this@AuthFormValidator.validateLogin(email, password))
+        if (password.isNotBlank() && password.codePointCount(0, password.length) < 8) {
+            put(FormField.PASSWORD, "Use at least 8 characters.")
+        }
         if (password != passwordConfirmation) {
             put(FormField.CONFIRMATION, "Passwords must match.")
         } else if (passwordConfirmation.isBlank()) {
             put(FormField.CONFIRMATION, "Confirm your password.")
         }
+        if (!isConsentActive) put(FormField.CONSENT, "Confirm your consent to continue.")
     }
 }

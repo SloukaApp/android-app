@@ -24,8 +24,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
@@ -54,12 +57,16 @@ fun RegisterVerificationPart(
     state: RegisterViewState,
     showStamp: Boolean,
     event: (RegisterViewEvent) -> Unit,
-    innerPadding: PaddingValues
+    innerPadding: PaddingValues,
+    modifier: Modifier = Modifier
 ) {
     val replacement = state.envelopeReplacement
     val motion = remember(state.envelopeVersion) {
         Animatable(if (replacement == EnvelopeReplacement.ENTERING) 1f else 0f)
     }
+    val stampImpression = remember(state.envelopeVersion) { Animatable(0f) }
+    val dismissal = remember(state.envelopeVersion) { Animatable(0f) }
+    val onEvent by rememberUpdatedState(event)
     val exitAngle = remember(state.envelopeVersion) {
         Random.nextFloat() * 4f + 4f
     } * if (state.envelopeVersion % 2 == 0) 1f else -1f
@@ -81,11 +88,22 @@ fun RegisterVerificationPart(
         }
     }
 
+    LaunchedEffect(showStamp, state.envelopeVersion) {
+        if (!showStamp) return@LaunchedEffect
+
+        stampImpression.animateTo(1f, tween(220))
+        delay(650.milliseconds)
+        dismissal.animateTo(1f, tween(320, easing = FastOutSlowInEasing))
+        onEvent(RegisterViewEvent.VerificationEnvelopeDismissed)
+    }
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
             .fillMaxSize()
-            .padding(top = innerPadding.calculateTopPadding(), bottom = innerPadding.calculateBottomPadding())
+            .padding(top = innerPadding.calculateTopPadding())
+            .then(modifier)
+            .padding(bottom = innerPadding.calculateBottomPadding())
             .imePadding()
     ) {
         BoxWithConstraints(
@@ -105,7 +123,9 @@ fun RegisterVerificationPart(
                             .widthIn(max = 420.dp)
                             .fillMaxWidth()
                             .graphicsLayer {
-                                translationY = travel.toPx() * motion.value
+                                val dismissed = dismissal.value
+                                translationY = travel.toPx() * motion.value + 24.dp.toPx() * dismissed
+                                alpha = 1f - dismissed
                                 if (replacement == EnvelopeReplacement.EXITING) {
                                     rotationZ = exitAngle * motion.value
                                 }
@@ -116,6 +136,7 @@ fun RegisterVerificationPart(
                             state = state,
                             canEdit = canEdit,
                             showStamp = showStamp,
+                            stampImpression = stampImpression.asState(),
                             event = event
                         )
                     }
@@ -141,6 +162,7 @@ private fun VerificationLetter(
     state: RegisterViewState,
     canEdit: Boolean,
     showStamp: Boolean,
+    stampImpression: State<Float>,
     event: (RegisterViewEvent) -> Unit
 ) {
     Column(
@@ -181,7 +203,7 @@ private fun VerificationLetter(
 
         Box(Modifier.heightIn(min = 20.dp), contentAlignment = Alignment.Center) {
             if (showStamp) {
-                VerificationStamp(onFinished = { event(RegisterViewEvent.VerificationStampShown) })
+                VerificationStamp(impression = stampImpression)
             } else {
                 state.codeError?.let {
                     Text(
@@ -198,16 +220,9 @@ private fun VerificationLetter(
 }
 
 @Composable
-private fun VerificationStamp(onFinished: () -> Unit) {
-    val impression = remember { Animatable(0f) }
+private fun VerificationStamp(impression: State<Float>) {
     val ink = MaterialTheme.colorScheme.primary
     val shape = RoundedCornerShape(4.dp)
-
-    LaunchedEffect(Unit) {
-        impression.animateTo(1f, tween(220))
-        delay(650.milliseconds)
-        onFinished()
-    }
 
     Text(
         text = "EMAIL VERIFIED",

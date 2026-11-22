@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">Slouka</string>
+    <plurals name="streak_days">
+        <item quantity="one">%d day streak</item>
+        <item quantity="other">%d day streak</item>
+    </plurals>
 </resources>

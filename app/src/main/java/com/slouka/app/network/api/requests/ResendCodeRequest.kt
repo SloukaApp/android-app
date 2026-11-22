@@ -10,5 +10,4 @@ data class ResendCodeRequest(
 
     @SerialName("password")
     val password: String
-) {
-}
+)

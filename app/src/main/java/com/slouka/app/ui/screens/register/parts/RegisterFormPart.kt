@@ -1,33 +1,32 @@
 package com.slouka.app.ui.screens.register.parts
 
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Email
-import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material3.Card
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -42,6 +41,7 @@ import com.slouka.app.ui.views.buttons.AnimatedBottomButton
 import com.slouka.app.ui.views.decos.ClubSignatureLine
 import com.slouka.app.ui.views.dividers.TextDivider
 import com.slouka.app.ui.views.fields.PasswordField
+import com.slouka.app.ui.views.forms.AuthFormLayout
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -58,7 +58,6 @@ fun RegisterFormPart(
 
     var cardVisibility by rememberSaveable { mutableStateOf(false) }
     var registerButtonVisibility by rememberSaveable { mutableStateOf(false) }
-    var buttonEntered by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         delay(400.milliseconds)
@@ -68,46 +67,35 @@ fun RegisterFormPart(
         registerButtonVisibility = true
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(top = innerPadding.calculateTopPadding())
-            .imePadding()
-    ) {
-        Text(
-            text = "Create new account just in 2 steps! Fill form below...",
-            fontSize = 14.sp,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
-        )
-
-        Box(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-            UnrollCardAnimation(
-                visible = cardVisibility,
-                modifier = Modifier.fillMaxWidth(),
-                rollInset = 10.dp
-            ) {
-                RegistrationFormCard(
-                    state = state,
-                    showSignature = showSignature,
-                    canEdit = canEdit,
-                    errors = state.fieldErrors,
-                    fieldFeedback = { field -> if (field in state.shakenFields) feedback else Modifier },
-                    onEvent = event
-                )
-            }
+    AuthFormLayout(
+        contentPadding = innerPadding,
+        description = "Create new account just in 2 steps! Fill form below...",
+        bottomAction = {
+            AnimatedBottomButton(
+                visible = registerButtonVisibility && canEdit,
+                onClick = {
+                    focusManager.clearFocus()
+                    event(RegisterViewEvent.RegisterClicked)
+                },
+                text = "Register",
+                enabled = canEdit
+            )
         }
-
-        AnimatedBottomButton(
-            onEnterFinished = { buttonEntered = true },
-            visible = registerButtonVisibility && canEdit,
-            onClick = {
-                focusManager.clearFocus()
-                event(RegisterViewEvent.RegisterClicked)
-            },
-            text = "Register",
-            enabled = canEdit,
-            bottomPadding = innerPadding.calculateBottomPadding()
-        )
+    ) {
+        UnrollCardAnimation(
+            visible = cardVisibility,
+            modifier = Modifier.fillMaxWidth(),
+            rollInset = 10.dp
+        ) {
+            RegistrationFormCard(
+                state = state,
+                showSignature = showSignature,
+                canEdit = canEdit,
+                errors = state.fieldErrors,
+                fieldFeedback = { field -> if (field in state.shakenFields) feedback else Modifier },
+                onEvent = event
+            )
+        }
     }
 }
 
@@ -157,26 +145,6 @@ private fun RegistrationFormCard(
                     .padding(bottom = 6.dp)
             )
 
-            OutlinedTextField(
-                value = state.name,
-                onValueChange = { onEvent(RegisterViewEvent.NameChanged(it)) },
-                label = { Text("Name") },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Text,
-                    imeAction = ImeAction.Next
-                ),
-                isError = errors[FormField.NAME] != null,
-                supportingText = errors[FormField.NAME]?.let { message -> { Text(message) } },
-                enabled = canEdit,
-                leadingIcon = { Icon(Icons.Rounded.Person, null) },
-                modifier = fieldFeedback(FormField.NAME)
-                    .fillMaxWidth()
-                    .padding(bottom = 10.dp)
-            )
-
-            TextDivider(text = "AND", thickness = 4.dp, modifier = Modifier.padding(bottom = 6.dp))
-
             PasswordField(
                 value = state.password,
                 onValueChange = { onEvent(RegisterViewEvent.PasswordChanged(it)) },
@@ -198,6 +166,44 @@ private fun RegistrationFormCard(
                 imeAction = ImeAction.Done,
                 modifier = fieldFeedback(FormField.CONFIRMATION).fillMaxWidth()
             )
+
+            TextDivider(text = "AND", thickness = 4.dp, modifier = Modifier.padding(top = 6.dp))
+
+            Column(modifier = fieldFeedback(FormField.CONSENT).fillMaxWidth()) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 48.dp)
+                        .toggleable(
+                            value = state.isConsentActive,
+                            enabled = canEdit,
+                            role = Role.Checkbox,
+                            onValueChange = { onEvent(RegisterViewEvent.ConsentChanged(it)) }
+                        )
+                        .padding(horizontal = 12.dp)
+                ) {
+                    Checkbox(
+                        checked = state.isConsentActive,
+                        onCheckedChange = null,
+                        enabled = canEdit
+                    )
+                    Text(
+                        text = "I consent to Slouka using my email to manage my account.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(start = 12.dp)
+                    )
+                }
+                errors[FormField.CONSENT]?.let { message ->
+                    Text(
+                        text = message,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(horizontal = 12.dp)
+                    )
+                }
+            }
+
             ClubSignatureLine(
                 showSignature = showSignature,
                 onFinished = { onEvent(RegisterViewEvent.ClubSignatureShown) },

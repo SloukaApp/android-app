@@ -43,7 +43,7 @@ class StorageCryptoEngine @Inject constructor() {
         val encrypted = combined.copyOfRange(12, combined.size)
 
         val cipher = Cipher.getInstance("AES/GCM/NoPadding").apply {
-            init(Cipher.ENCRYPT_MODE, secretKey, GCMParameterSpec(128, iv))
+            init(Cipher.DECRYPT_MODE, secretKey, GCMParameterSpec(128, iv))
         }
 
         val decrypted = cipher.doFinal(encrypted)

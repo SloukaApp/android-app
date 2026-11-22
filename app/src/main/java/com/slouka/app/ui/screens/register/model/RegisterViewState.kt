@@ -6,7 +6,6 @@ data class RegisterViewState(
     val step: RegisterViewStep = RegisterViewStep.REGISTER_FORM,
 
     val email: String = "",
-    val name: String = "",
 
     val code: String = "",
 
@@ -15,6 +14,7 @@ data class RegisterViewState(
 
     val password: String = "",
     val passwordConfirmation: String = "",
+    val isConsentActive: Boolean = false,
     internal val showFieldErrors: Boolean = false,
     val fieldErrors: Map<FormField, String> = emptyMap(),
     val shakenFields: Set<FormField> = emptySet(),

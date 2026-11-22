@@ -3,8 +3,10 @@ package com.slouka.app.ui.screens.register.model
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.slouka.app.account.AccountRepository
+import com.slouka.app.account.exceptions.AccountRequestException
 import com.slouka.app.account.validation.AuthFormValidator
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.net.HttpURLConnection.HTTP_UNAUTHORIZED
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -28,10 +30,12 @@ class RegisterViewModel @Inject constructor(
     fun onEvent(event: RegisterViewEvent) {
         when (event) {
             is RegisterViewEvent.EmailChanged -> this.editForm { it.copy(email = event.email) }
-            is RegisterViewEvent.NameChanged -> this.editForm { it.copy(name = event.name) }
             is RegisterViewEvent.PasswordChanged -> this.editForm { it.copy(password = event.password) }
             is RegisterViewEvent.PasswordConfirmationChanged -> this.editForm {
                 it.copy(passwordConfirmation = event.password)
+            }
+            is RegisterViewEvent.ConsentChanged -> this.editForm {
+                it.copy(isConsentActive = event.isConsentActive)
             }
             is RegisterViewEvent.RegisterClicked -> this.register()
 
@@ -75,7 +79,7 @@ class RegisterViewModel @Inject constructor(
                     }
                 }
             }
-            is RegisterViewEvent.VerificationStampShown -> {
+            is RegisterViewEvent.VerificationEnvelopeDismissed -> {
                 if (this.state.value.isEmailVerified && !verificationNavigationSent) {
                     verificationNavigationSent = true
                     this.viewModelScope.launch {
@@ -85,7 +89,7 @@ class RegisterViewModel @Inject constructor(
             }
             is RegisterViewEvent.BackToRegistrationForm -> {
                 this.mViewState.update {
-                    RegisterViewState(email = it.email, name = it.name, invalidAttempt = it.invalidAttempt)
+                    RegisterViewState(email = it.email, invalidAttempt = it.invalidAttempt)
                 }
             }
         }
@@ -105,9 +109,9 @@ class RegisterViewModel @Inject constructor(
 
     private fun validateForm(state: RegisterViewState) = this.validator.validateRegistration(
         email = state.email,
-        name = state.name,
         password = state.password,
-        passwordConfirmation = state.passwordConfirmation
+        passwordConfirmation = state.passwordConfirmation,
+        isConsentActive = state.isConsentActive
     )
 
     private fun register() {
@@ -133,23 +137,19 @@ class RegisterViewModel @Inject constructor(
         this.viewModelScope.launch {
             val result = this@RegisterViewModel.accountRepository.register(
                 email = current.email,
-                name = current.name,
-                password = current.password
+                password = current.password,
+                isConsentActive = current.isConsentActive
             )
 
             result.onSuccess {
                 this@RegisterViewModel.mViewState.update {
                     it.copy(isRegistrationAccepted = true, isLoading = false)
                 }
-            }.onFailure {
-                // TODO: Remove from production-ready
+            }.onFailure { failure ->
                 this@RegisterViewModel.mViewState.update {
-                    it.copy(isRegistrationAccepted = true, isLoading = false)
+                    it.copy(isLoading = false)
                 }
-//                this@RegisterViewModel.mViewState.update {
-//                    it.copy(isLoading = false)
-//                }
-//                this@RegisterViewModel.mViewEffect.send(RegisterViewEffect.ShowError("Could not register. Please try again."))
+                this@RegisterViewModel.showRequestError(failure, "Could not register. Please try again.")
             }
         }
     }
@@ -163,31 +163,28 @@ class RegisterViewModel @Inject constructor(
 
         this.mViewState.update { it.copy(isLoading = true, codeError = null) }
         this.viewModelScope.launch {
-            val result = this@RegisterViewModel.accountRepository.verifyRegistration(code = current.code)
+            val result = this@RegisterViewModel.accountRepository.verifyRegistration(
+                email = current.email,
+                code = current.code
+            )
 
             result.onSuccess {
                 this@RegisterViewModel.mViewState.update {
                     it.copy(isLoading = false, isEmailVerified = true)
                 }
             }.onFailure { failure ->
-                // TODO: Remove this from production-ready
-                this@RegisterViewModel.mViewState.update {
-                    it.copy(isLoading = false, isEmailVerified = true)
+                if (failure is AccountRequestException && failure.statusCode == HTTP_UNAUTHORIZED) {
+                    this@RegisterViewModel.mViewState.update {
+                        it.copy(
+                            isLoading = false,
+                            codeError = "Check the code and try again.",
+                            invalidCodeAttempt = it.invalidCodeAttempt + 1
+                        )
+                    }
+                } else {
+                    this@RegisterViewModel.mViewState.update { it.copy(isLoading = false) }
+                    this@RegisterViewModel.showRequestError(failure, "Could not verify the code. Please try again.")
                 }
-//                if (failure is RegisterException) {
-//                    this@RegisterViewModel.mViewState.update {
-//                        it.copy(
-//                            isLoading = false,
-//                            codeError = "Check the code and try again.",
-//                            invalidCodeAttempt = it.invalidCodeAttempt + 1
-//                        )
-//                    }
-//                } else {
-//                    this@RegisterViewModel.mViewState.update { it.copy(isLoading = false) }
-//                    this@RegisterViewModel.mViewEffect.send(
-//                        RegisterViewEffect.ShowError("Could not verify the code. Please try again.")
-//                    )
-//                }
             }
         }
     }
@@ -209,16 +206,15 @@ class RegisterViewModel @Inject constructor(
                 this@RegisterViewModel.mViewState.update {
                     it.copy(isResending = false, envelopeReplacement = EnvelopeReplacement.EXITING)
                 }
-            }.onFailure {
-                // TODO: Remove from production-ready
-                this@RegisterViewModel.mViewState.update {
-                    it.copy(isResending = false, envelopeReplacement = EnvelopeReplacement.EXITING)
-                }
-//                this@RegisterViewModel.mViewState.update { it.copy(isResending = false) }
-//                this@RegisterViewModel.mViewEffect.send(
-//                    RegisterViewEffect.ShowError("Could not send a new code. Please try again.")
-//                )
+            }.onFailure { failure ->
+                this@RegisterViewModel.mViewState.update { it.copy(isResending = false) }
+                this@RegisterViewModel.showRequestError(failure, "Could not send a new code. Please try again.")
             }
         }
+    }
+
+    private suspend fun showRequestError(failure: Throwable, fallback: String) {
+        val message = (failure as? AccountRequestException)?.detailMessage ?: fallback
+        this.mViewEffect.send(RegisterViewEffect.ShowError(message))
     }
 }

@@ -6,6 +6,10 @@ plugins {
     alias(libs.plugins.devtools.ksp)
 }
 
+val authDiagnostics = providers.gradleProperty("sloukaAuthDiagnostics")
+    .map { it.toBooleanStrict() }
+    .orElse(false)
+
 android {
     namespace = "com.slouka.app"
     compileSdk {
@@ -19,11 +23,13 @@ android {
         versionCode = 1
         versionName = "1.0"
 
+        buildConfigField("boolean", "AUTH_DIAGNOSTICS", "false")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
         release {
+            buildConfigField("boolean", "AUTH_DIAGNOSTICS", authDiagnostics.get().toString())
             proguardFiles("proguard-rules.pro")
             optimization {
                 enable = true
@@ -37,6 +43,7 @@ android {
         targetCompatibility = JavaVersion.VERSION_11
     }
     buildFeatures {
+        buildConfig = true
         compose = true
     }
 }
