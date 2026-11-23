@@ -60,6 +60,7 @@ import com.slouka.app.ui.views.backgrounds.TopBarIconBackground
 import com.slouka.app.ui.views.backgrounds.iconBackgroundFadeSpec
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
+import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -95,7 +96,7 @@ fun ProgressTopAppBar(
         mutableStateOf(backgroundEnterDelayMillis <= 0)
     }
     LaunchedEffect(backgroundEnterDelayMillis) {
-        delay(backgroundEnterDelayMillis)
+        delay(backgroundEnterDelayMillis.milliseconds)
         backgroundReady = true
     }
 
