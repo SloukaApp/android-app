@@ -27,6 +27,8 @@ class StartupViewModel @Inject constructor(
     val state = mState.asStateFlow()
     var allowHome by mutableStateOf(false)
         private set
+    var animateLogout by mutableStateOf(false)
+        private set
 
     init {
         viewModelScope.launch {
@@ -39,12 +41,14 @@ class StartupViewModel @Inject constructor(
             } else StartupState.SIGNED_OUT
 
             sessionResets.dropWhile { it == initialReset }.collect {
+                animateLogout = it.isLogout
                 allowHome = false
             }
         }
     }
 
     fun onHomeOpened() {
+        animateLogout = false
         allowHome = true
     }
 

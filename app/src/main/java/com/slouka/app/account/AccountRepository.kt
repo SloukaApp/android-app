@@ -27,9 +27,12 @@ class AccountRepository @Inject internal constructor(
     private val accountApi: AccountApi,
     private val sessionManager: SessionManager
 ) {
+    val accountEmail = this.sessionManager.accountEmail
+
     suspend fun login(email: String, password: String): Result<Unit> = this.request("login") {
-        val tokens = this.api.login(LoginRequest(email = email.trim(), password = password))
-        this.saveTokens(tokens)
+        val accountEmail = email.trim()
+        val tokens = this.api.login(LoginRequest(email = accountEmail, password = password))
+        this.saveTokens(tokens, accountEmail)
     }
 
     suspend fun register(
@@ -43,8 +46,9 @@ class AccountRepository @Inject internal constructor(
     }
 
     suspend fun verifyRegistration(email: String, code: String): Result<Unit> = this.request("confirm email") {
-        val tokens = this.api.verifyEmail(VerificationRequest(email = email.trim(), code = code))
-        this.saveTokens(tokens)
+        val accountEmail = email.trim()
+        val tokens = this.api.verifyEmail(VerificationRequest(email = accountEmail, code = code))
+        this.saveTokens(tokens, accountEmail)
     }
 
     suspend fun resendConfirmationCode(email: String, password: String): Result<Unit> = this.request("resend code") {
@@ -54,13 +58,14 @@ class AccountRepository @Inject internal constructor(
     suspend fun logout(): Result<Unit> = this.request("logout") {
         val session = this.sessionManager.getTokens()
         if (session != null) this.accountApi.logout(session)
-        this.sessionManager.resetIfSameSession(session)
+        this.sessionManager.resetAfterLogout(session)
     }
 
-    private fun saveTokens(tokens: TokenResponse) {
+    private fun saveTokens(tokens: TokenResponse, email: String) {
         this.sessionManager.saveTokens(
             accessToken = checkNotNull(tokens.accessToken) { "Missing access token" },
-            refreshToken = checkNotNull(tokens.refreshToken) { "Missing refresh token" }
+            refreshToken = checkNotNull(tokens.refreshToken) { "Missing refresh token" },
+            email = email
         )
     }
 

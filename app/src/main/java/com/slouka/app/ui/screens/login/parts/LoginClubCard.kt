@@ -30,11 +30,13 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.slouka.app.R
 import com.slouka.app.ui.views.decos.MemberAvatar
 import kotlin.math.roundToInt
 
@@ -76,7 +78,7 @@ internal fun LoginClubCard(
                     .padding(all = 10.dp)
             ) {
                 Text(
-                    text = "Club card",
+                    text = stringResource(R.string.login_card_title),
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier
@@ -99,11 +101,11 @@ internal fun LoginClubCard(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     MemberAvatar(
-                        contentDescription = "Club member",
+                        contentDescription = stringResource(R.string.login_card_member),
                         modifier = avatarModifier,
                         diameter = 52.dp
                     )
-                    Text("Slouka Club", style = MaterialTheme.typography.titleSmall)
+                    Text(stringResource(R.string.login_card_club_name), style = MaterialTheme.typography.titleSmall)
                 }
             }
         }

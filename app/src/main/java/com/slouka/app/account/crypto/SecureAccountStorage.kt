@@ -17,8 +17,8 @@ class SecureAccountStorage @Inject constructor(
         return this.crypto.decrypt(this.prefs.getString(key, null)!!)
     }
 
-    fun putStrings(values: Map<String, String>) {
-        val encryptedValues = values.mapValues { (_, value) -> this.crypto.encrypt(value) }
+    fun putStrings(values: Map<String, String?>) {
+        val encryptedValues = values.mapValues { (_, value) -> value?.let(this.crypto::encrypt) }
         this.prefs.edit {
             encryptedValues.forEach { (key, value) -> putString(key, value) }
         }

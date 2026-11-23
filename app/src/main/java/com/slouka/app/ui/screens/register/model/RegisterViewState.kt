@@ -1,5 +1,7 @@
 package com.slouka.app.ui.screens.register.model
 
+import androidx.annotation.StringRes
+
 import com.slouka.app.account.validation.FormField
 
 data class RegisterViewState(
@@ -16,7 +18,7 @@ data class RegisterViewState(
     val passwordConfirmation: String = "",
     val isConsentActive: Boolean = false,
     internal val showFieldErrors: Boolean = false,
-    val fieldErrors: Map<FormField, String> = emptyMap(),
+    val fieldErrors: Map<FormField, Int> = emptyMap(),
     val shakenFields: Set<FormField> = emptySet(),
     val invalidAttempt: Int = 0,
 
@@ -24,6 +26,6 @@ data class RegisterViewState(
     val isResending: Boolean = false,
     val envelopeVersion: Int = 0,
     val envelopeReplacement: EnvelopeReplacement = EnvelopeReplacement.IDLE,
-    val codeError: String? = null,
+    @StringRes val codeError: Int? = null,
     val invalidCodeAttempt: Int = 0,
 )

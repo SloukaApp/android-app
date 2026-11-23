@@ -2,6 +2,8 @@ package com.slouka.app.ui.screens.sessions.model
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.slouka.app.R
+import com.slouka.app.ui.UiText.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
@@ -15,11 +17,40 @@ import kotlinx.coroutines.launch
 @HiltViewModel
 class SessionsViewModel @Inject constructor() : ViewModel() {
     private val mViewState = MutableStateFlow(SessionsViewState(sessions = listOf(
-        Session("current", "This Android device", "Slouka · Android", "Active now", isCurrent = true),
-        Session("tablet", "Android tablet", "Slouka · Android", "Today, 10:24", deviceType = SessionDeviceType.TABLET),
-        Session("chrome", "Chrome on Windows", "Web session", "Yesterday, 18:42", deviceType = SessionDeviceType.DESKTOP),
-        Session("iphone", "iPhone", "Slouka · iOS", "November 15, 12:10"),
-        Session("mac", "Safari on Mac", "Web session", "November 12, 09:35", deviceType = SessionDeviceType.LAPTOP)
+        Session(
+            id = "current",
+            device = Resource(R.string.sessions_demo_device_current),
+            details = Resource(R.string.sessions_demo_client_android),
+            lastActive = Resource(R.string.sessions_demo_active_now),
+            isCurrent = true
+        ),
+        Session(
+            id = "tablet",
+            device = Resource(R.string.sessions_demo_device_tablet),
+            details = Resource(R.string.sessions_demo_client_android),
+            lastActive = Resource(R.string.sessions_demo_tablet_last_active),
+            deviceType = SessionDeviceType.TABLET
+        ),
+        Session(
+            id = "chrome",
+            device = Resource(R.string.sessions_demo_device_chrome),
+            details = Resource(R.string.sessions_demo_client_web),
+            lastActive = Resource(R.string.sessions_demo_chrome_last_active),
+            deviceType = SessionDeviceType.DESKTOP
+        ),
+        Session(
+            id = "iphone",
+            device = Resource(R.string.sessions_demo_device_iphone),
+            details = Resource(R.string.sessions_demo_client_ios),
+            lastActive = Resource(R.string.sessions_demo_iphone_last_active)
+        ),
+        Session(
+            id = "mac",
+            device = Resource(R.string.sessions_demo_device_safari),
+            details = Resource(R.string.sessions_demo_client_web),
+            lastActive = Resource(R.string.sessions_demo_safari_last_active),
+            deviceType = SessionDeviceType.LAPTOP
+        )
     )))
     private val mViewEffect = Channel<SessionsViewEffect>(Channel.BUFFERED)
 
@@ -45,7 +76,7 @@ class SessionsViewModel @Inject constructor() : ViewModel() {
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (failure: Exception) {
-                mViewEffect.send(SessionsViewEffect.ShowError("Could not end this session. Please try again."))
+                mViewEffect.send(SessionsViewEffect.ShowError(R.string.sessions_error_end))
             } finally {
                 mViewState.update { it.copy(terminatingIds = it.terminatingIds - id) }
             }

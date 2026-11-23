@@ -34,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
@@ -42,6 +43,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
+import com.slouka.app.R
 import com.slouka.app.ui.animations.VerificationEnvelope
 import com.slouka.app.ui.animations.rememberInvalidInputFeedback
 import com.slouka.app.ui.screens.register.model.EnvelopeReplacement
@@ -152,7 +154,7 @@ fun RegisterVerificationPart(
             enabled = canEdit,
             modifier = Modifier.padding(vertical = 8.dp)
         ) {
-            Text(if (state.isResending) "Sending a new code…" else "Send a new code")
+            Text(stringResource(if (state.isResending) R.string.verification_resending else R.string.verification_resend))
         }
     }
 }
@@ -171,14 +173,14 @@ private fun VerificationLetter(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 22.dp)
     ) {
         Text(
-            text = "Confirm your email",
+            text = stringResource(R.string.verification_title),
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center
         )
         Text(
-            text = if (state.email.isBlank()) "Enter the code from your email"
-            else "Enter the code sent to ${state.email}",
+            text = if (state.email.isBlank()) stringResource(R.string.verification_enter_code)
+            else stringResource(R.string.verification_enter_code_for_email, state.email),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
@@ -207,7 +209,7 @@ private fun VerificationLetter(
             } else {
                 state.codeError?.let {
                     Text(
-                        text = it,
+                        text = stringResource(it),
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodySmall,
                         textAlign = TextAlign.Center,
@@ -225,7 +227,7 @@ private fun VerificationStamp(impression: State<Float>) {
     val shape = RoundedCornerShape(4.dp)
 
     Text(
-        text = "EMAIL VERIFIED",
+        text = stringResource(R.string.verification_stamp),
         style = MaterialTheme.typography.labelLarge,
         fontWeight = FontWeight.Bold,
         color = ink,

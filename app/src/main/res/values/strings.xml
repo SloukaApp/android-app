@@ -1,7 +1,112 @@
 <resources>
-    <string name="app_name">Slouka</string>
+    <!-- App identity and common navigation -->
+    <string name="app_name" translatable="false">Slouka</string>
+    <string name="common_back">Back</string>
+
+    <!-- Shared fields and validation for LoginScreen and RegisterFormPart -->
+    <string name="auth_email">Email</string>
+    <string name="auth_password">Password</string>
+    <string name="auth_password_hide">Hide password</string>
+    <string name="auth_password_show">Show password</string>
+    <string name="auth_password_mask" translatable="false">•</string>
+    <string name="auth_error_invalid_email">Enter a valid email address.</string>
+    <string name="auth_error_password_required">Enter a password.</string>
+
+    <!-- LoginScreen and LoginClubCard -->
+    <string name="login_title">Log in</string>
+    <string name="login_description">Use your Slouka account to learn words. Login with it in form below!</string>
+    <string name="login_divider_or">OR</string>
+    <string name="login_create_account">Create an account</string>
+    <string name="login_card_title">Club card</string>
+    <string name="login_card_member">Club member</string>
+    <string name="login_card_club_name" translatable="false">Slouka Club</string>
+    <string name="login_error_invalid_credentials">Email or password is incorrect. Please try again.</string>
+    <string name="login_error_request">Could not log in. Please try again.</string>
+
+    <!-- RegisterScreen and RegisterFormPart -->
+    <string name="register_title">Register</string>
+    <string name="register_description">Create new account just in 2 steps! Fill form below...</string>
+    <string name="register_form_title">Form</string>
+    <string name="register_confirm_password">Again password</string>
+    <string name="register_divider_and">AND</string>
+    <string name="register_consent">I consent to Slouka using my email to manage my account.</string>
+    <string name="register_error_password_length">Use at least 8 characters.</string>
+    <string name="register_error_password_mismatch">Passwords must match.</string>
+    <string name="register_error_confirmation_required">Confirm your password.</string>
+    <string name="register_error_consent_required">Confirm your consent to continue.</string>
+    <string name="register_error_request">Could not register. Please try again.</string>
+
+    <!-- RegisterVerificationPart and confirmation errors -->
+    <string name="verification_title">Confirm your email</string>
+    <string name="verification_enter_code">Enter the code from your email</string>
+    <string name="verification_enter_code_for_email">Enter the code sent to %1$s</string>
+    <string name="verification_resend">Send a new code</string>
+    <string name="verification_resending">Sending a new code…</string>
+    <string name="verification_stamp">EMAIL VERIFIED</string>
+    <string name="verification_error_invalid_code">Check the code and try again.</string>
+    <string name="verification_error_request">Could not verify the code. Please try again.</string>
+    <string name="verification_error_resend">Could not send a new code. Please try again.</string>
+
+    <!-- HomeScreen and its tabs -->
+    <string name="home_page_dashboard">Dashboard</string>
+    <string name="home_page_home">Home</string>
+    <string name="home_page_decks">Decks</string>
+    <string name="home_page_dictionary">Dictionary</string>
+    <string name="home_page_no_decks">No decks yet</string>
+    <string name="home_page_no_words">No words yet</string>
+    <string name="home_search_hint">Search words</string>
+    <string name="home_search_clear">Clear search</string>
     <plurals name="streak_days">
         <item quantity="one">%d day streak</item>
         <item quantity="other">%d day streak</item>
     </plurals>
+
+    <!-- AccountQuickMenu and AccountScreen -->
+    <string name="account_menu_open">Open account</string>
+    <string name="account_menu_close">Close account menu</string>
+    <string name="account_menu_title">Slouka account</string>
+    <string name="account_menu_signed_in">Signed in</string>
+    <string name="account_menu_manage">Manage account</string>
+    <string name="account_menu_logout">Logout</string>
+    <string name="account_menu_signing_out">Signing out…</string>
+    <string name="account_menu_error_logout">Could not log out. Please try again.</string>
+    <string name="account_sessions">Sessions</string>
+
+    <!-- AppSettingsScreen and FlameSettings -->
+    <string name="app_settings_title">App settings</string>
+    <string name="app_settings_flame">Streak flame</string>
+    <string name="app_settings_flame_mode">Flame mode</string>
+    <string name="app_settings_flame_off">Off</string>
+    <string name="app_settings_flame_static">Static</string>
+    <string name="app_settings_flame_dynamic">Dynamic</string>
+    <string name="app_settings_flame_transitions">One-shot transitions</string>
+
+    <!-- SessionsScreen and SessionCard -->
+    <string name="sessions_swipe_hint">Swipe a session to end it.</string>
+    <string name="sessions_empty">No other active sessions.</string>
+    <string name="sessions_current">Current session</string>
+    <string name="sessions_card_details">%1$s · %2$s</string>
+    <string name="sessions_end_on_device">End session on %1$s</string>
+    <string name="sessions_error_end">Could not end this session. Please try again.</string>
+
+    <!-- Demo data used by SessionsViewModel -->
+    <string name="sessions_demo_device_current">This Android device</string>
+    <string name="sessions_demo_device_tablet">Android tablet</string>
+    <string name="sessions_demo_device_chrome">Chrome on Windows</string>
+    <string name="sessions_demo_device_iphone" translatable="false">iPhone</string>
+    <string name="sessions_demo_device_safari">Safari on Mac</string>
+    <string name="sessions_demo_client_android" translatable="false">Slouka · Android</string>
+    <string name="sessions_demo_client_ios" translatable="false">Slouka · iOS</string>
+    <string name="sessions_demo_client_web">Web session</string>
+    <string name="sessions_demo_active_now">Active now</string>
+    <string name="sessions_demo_tablet_last_active">Today, 10:24</string>
+    <string name="sessions_demo_chrome_last_active">Yesterday, 18:42</string>
+    <string name="sessions_demo_iphone_last_active">November 15, 12:10</string>
+    <string name="sessions_demo_safari_last_active">November 12, 09:35</string>
+
+    <!-- Compose preview values -->
+    <string name="preview_auth_email" translatable="false">example@gmail.com</string>
+    <string name="preview_account_email" translatable="false">member@example.com</string>
+    <string name="preview_search_query" translatable="false">apple</string>
+    <string name="preview_top_bar_title" translatable="false">Title</string>
 </resources>

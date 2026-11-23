@@ -12,4 +12,10 @@ data object RegisterRoute
 data object HomeRoute
 
 @Serializable
+data object AccountRoute
+
+@Serializable
 data object SessionsRoute
+
+@Serializable
+data object AppSettingsRoute

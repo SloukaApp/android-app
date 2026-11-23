@@ -7,12 +7,17 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.NavDestination.Companion.hasRoute
+import com.slouka.app.ui.screens.account.AccountScreenRoot
 import com.slouka.app.ui.screens.home.HomeScreenRoot
+import com.slouka.app.ui.screens.home.model.HomeViewModel
 import com.slouka.app.ui.screens.sessions.SessionsScreenRoot
+import com.slouka.app.ui.screens.settings.AppSettingsScreenRoot
 import com.slouka.app.ui.screens.login.LoginScreenRoot
 import com.slouka.app.ui.screens.register.RegisterScreenRoot
 import com.slouka.app.ui.animations.AuthPanelTransitionMillis
@@ -30,10 +35,12 @@ import androidx.compose.runtime.setValue
 fun SloukaNavigation(
     startDestination: Any,
     allowHome: Boolean,
+    animateLogout: Boolean,
     onHomeOpened: () -> Unit
 ) {
     val controller = rememberNavController()
     val homeAllowed = rememberUpdatedState(allowHome)
+    val logoutAnimationAllowed = rememberUpdatedState(animateLogout)
     var playMemberAvatarTransition by remember { mutableStateOf(false) }
     var closeLoginPanels by remember { mutableStateOf(false) }
     var revealHomeOnEnter by rememberSaveable { mutableStateOf(startDestination == HomeRoute) }
@@ -122,7 +129,15 @@ fun SloukaNavigation(
                     } else null
                 }
             ) {
-                HomeDestination(homeAllowed.value, returnToLogin, keepContentOnExit = true) {
+                val viewModel: HomeViewModel = hiltViewModel()
+                val menu by viewModel.accountMenu.collectAsStateWithLifecycle()
+                val finishingLogout = !homeAllowed.value && logoutAnimationAllowed.value && menu.isLoggingOut
+                HomeDestination(
+                    allowed = homeAllowed.value,
+                    onSessionMissing = returnToLogin,
+                    keepContentOnExit = true,
+                    waitForExit = finishingLogout
+                ) {
                     val animateOnEnter = remember { revealHomeOnEnter }
                     val keepAvatarInPlace = remember { playMemberAvatarTransition }
                     val finished = transition.currentState == EnterExitState.Visible && !isTransitionActive
@@ -133,10 +148,13 @@ fun SloukaNavigation(
                         }
                     }
                     HomeScreenRoot(
-                        onSessionsClick = { controller.navigate(SessionsRoute) },
+                        onManageAccountClick = { controller.navigate(AccountRoute) },
+                        onAppSettingsClick = { controller.navigate(AppSettingsRoute) },
+                        viewModel = viewModel,
                         avatarModifier = memberAvatarSharedElement(this),
                         showPageContent = !animateOnEnter || finished,
                         isInteractive = homeAllowed.value,
+                        finishingLogout = finishingLogout,
                         animateOnEnter = animateOnEnter,
                         keepAvatarInPlace = keepAvatarInPlace
                     )
@@ -148,6 +166,21 @@ fun SloukaNavigation(
                     SessionsScreenRoot(onBack = { controller.popBackStack() })
                 }
             }
+
+            composable<AccountRoute> {
+                HomeDestination(homeAllowed.value, returnToLogin) {
+                    AccountScreenRoot(
+                        onBack = { controller.popBackStack() },
+                        onSessionsClick = { controller.navigate(SessionsRoute) }
+                    )
+                }
+            }
+
+            composable<AppSettingsRoute> {
+                HomeDestination(homeAllowed.value, returnToLogin) {
+                    AppSettingsScreenRoot(onBack = { controller.popBackStack() })
+                }
+            }
         }
     }
 }
@@ -157,13 +190,14 @@ private fun HomeDestination(
     allowed: Boolean,
     onSessionMissing: () -> Unit,
     keepContentOnExit: Boolean = false,
+    waitForExit: Boolean = false,
     content: @Composable () -> Unit
 ) {
     var wasAllowed by remember { mutableStateOf(allowed) }
 
-    LaunchedEffect(allowed) {
-        if (allowed) wasAllowed = true else onSessionMissing()
+    LaunchedEffect(allowed, waitForExit) {
+        if (allowed) wasAllowed = true else if (!waitForExit) onSessionMissing()
     }
 
-    if (allowed || (keepContentOnExit && wasAllowed)) content()
+    if (allowed || waitForExit || (keepContentOnExit && wasAllowed)) content()
 }

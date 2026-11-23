@@ -1,10 +1,14 @@
 package com.slouka.app.ui.screens.register.model
 
+import androidx.annotation.StringRes
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.slouka.app.R
 import com.slouka.app.account.AccountRepository
 import com.slouka.app.account.exceptions.AccountRequestException
 import com.slouka.app.account.validation.AuthFormValidator
+import com.slouka.app.ui.UiText
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.net.HttpURLConnection.HTTP_UNAUTHORIZED
 import kotlinx.coroutines.channels.Channel
@@ -149,7 +153,7 @@ class RegisterViewModel @Inject constructor(
                 this@RegisterViewModel.mViewState.update {
                     it.copy(isLoading = false)
                 }
-                this@RegisterViewModel.showRequestError(failure, "Could not register. Please try again.")
+                this@RegisterViewModel.showRequestError(failure, R.string.register_error_request)
             }
         }
     }
@@ -177,13 +181,13 @@ class RegisterViewModel @Inject constructor(
                     this@RegisterViewModel.mViewState.update {
                         it.copy(
                             isLoading = false,
-                            codeError = "Check the code and try again.",
+                            codeError = R.string.verification_error_invalid_code,
                             invalidCodeAttempt = it.invalidCodeAttempt + 1
                         )
                     }
                 } else {
                     this@RegisterViewModel.mViewState.update { it.copy(isLoading = false) }
-                    this@RegisterViewModel.showRequestError(failure, "Could not verify the code. Please try again.")
+                    this@RegisterViewModel.showRequestError(failure, R.string.verification_error_request)
                 }
             }
         }
@@ -208,13 +212,14 @@ class RegisterViewModel @Inject constructor(
                 }
             }.onFailure { failure ->
                 this@RegisterViewModel.mViewState.update { it.copy(isResending = false) }
-                this@RegisterViewModel.showRequestError(failure, "Could not send a new code. Please try again.")
+                this@RegisterViewModel.showRequestError(failure, R.string.verification_error_resend)
             }
         }
     }
 
-    private suspend fun showRequestError(failure: Throwable, fallback: String) {
-        val message = (failure as? AccountRequestException)?.detailMessage ?: fallback
+    private suspend fun showRequestError(failure: Throwable, @StringRes fallback: Int) {
+        val message = (failure as? AccountRequestException)?.detailMessage?.let { UiText.Raw(it) }
+            ?: UiText.Resource(fallback)
         this.mViewEffect.send(RegisterViewEffect.ShowError(message))
     }
 }
