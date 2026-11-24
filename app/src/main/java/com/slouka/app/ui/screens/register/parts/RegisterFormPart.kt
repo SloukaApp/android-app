@@ -26,12 +26,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.slouka.app.R
 import com.slouka.app.ui.animations.UnrollCardAnimation
 import com.slouka.app.ui.animations.rememberInvalidInputFeedback
 import com.slouka.app.account.validation.FormField
@@ -69,7 +71,7 @@ fun RegisterFormPart(
 
     AuthFormLayout(
         contentPadding = innerPadding,
-        description = "Create new account just in 2 steps! Fill form below...",
+        description = stringResource(R.string.register_description),
         bottomAction = {
             AnimatedBottomButton(
                 visible = registerButtonVisibility && canEdit,
@@ -77,7 +79,7 @@ fun RegisterFormPart(
                     focusManager.clearFocus()
                     event(RegisterViewEvent.RegisterClicked)
                 },
-                text = "Register",
+                text = stringResource(R.string.register_title),
                 enabled = canEdit
             )
         }
@@ -104,7 +106,7 @@ private fun RegistrationFormCard(
     state: RegisterViewState,
     showSignature: Boolean,
     canEdit: Boolean,
-    errors: Map<FormField, String>,
+    errors: Map<FormField, Int>,
     fieldFeedback: (FormField) -> Modifier,
     onEvent: (RegisterViewEvent) -> Unit,
     modifier: Modifier = Modifier
@@ -119,7 +121,7 @@ private fun RegistrationFormCard(
             modifier = Modifier.padding(all = 10.dp)
         ) {
             Text(
-                text = "Form",
+                text = stringResource(R.string.register_form_title),
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier
@@ -130,14 +132,14 @@ private fun RegistrationFormCard(
             OutlinedTextField(
                 value = state.email,
                 onValueChange = { onEvent(RegisterViewEvent.EmailChanged(it)) },
-                label = { Text("Email") },
+                label = { Text(stringResource(R.string.auth_email)) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Email,
                     imeAction = ImeAction.Next
                 ),
                 isError = errors[FormField.EMAIL] != null,
-                supportingText = errors[FormField.EMAIL]?.let { message -> { Text(message) } },
+                supportingText = errors[FormField.EMAIL]?.let { message -> { Text(stringResource(message)) } },
                 enabled = canEdit,
                 leadingIcon = { Icon(Icons.Rounded.Email, null) },
                 modifier = fieldFeedback(FormField.EMAIL)
@@ -148,8 +150,8 @@ private fun RegistrationFormCard(
             PasswordField(
                 value = state.password,
                 onValueChange = { onEvent(RegisterViewEvent.PasswordChanged(it)) },
-                label = "Password",
-                error = errors[FormField.PASSWORD],
+                label = stringResource(R.string.auth_password),
+                error = errors[FormField.PASSWORD]?.let { stringResource(it) },
                 enabled = canEdit,
                 imeAction = ImeAction.Next,
                 modifier = fieldFeedback(FormField.PASSWORD)
@@ -160,14 +162,14 @@ private fun RegistrationFormCard(
             PasswordField(
                 value = state.passwordConfirmation,
                 onValueChange = { onEvent(RegisterViewEvent.PasswordConfirmationChanged(it)) },
-                label = "Again password",
-                error = errors[FormField.CONFIRMATION],
+                label = stringResource(R.string.register_confirm_password),
+                error = errors[FormField.CONFIRMATION]?.let { stringResource(it) },
                 enabled = canEdit,
                 imeAction = ImeAction.Done,
                 modifier = fieldFeedback(FormField.CONFIRMATION).fillMaxWidth()
             )
 
-            TextDivider(text = "AND", thickness = 4.dp, modifier = Modifier.padding(top = 6.dp))
+            TextDivider(text = stringResource(R.string.register_divider_and), thickness = 4.dp, modifier = Modifier.padding(top = 6.dp))
 
             Column(modifier = fieldFeedback(FormField.CONSENT).fillMaxWidth()) {
                 Row(
@@ -189,14 +191,14 @@ private fun RegistrationFormCard(
                         enabled = canEdit
                     )
                     Text(
-                        text = "I consent to Slouka using my email to manage my account.",
+                        text = stringResource(R.string.register_consent),
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.padding(start = 12.dp)
                     )
                 }
                 errors[FormField.CONSENT]?.let { message ->
                     Text(
-                        text = message,
+                        text = stringResource(message),
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.padding(horizontal = 12.dp)

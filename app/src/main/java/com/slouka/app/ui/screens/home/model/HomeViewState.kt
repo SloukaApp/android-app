@@ -8,5 +8,6 @@ data class HomeViewState(
     val flameMode: FlameMode = FlameMode.BURNING,
     val animateFlameChanges: Boolean = true,
     val streakDays: Int = 0,
-    val isLoggingOut: Boolean = false
+    val accountEmail: String? = null,
+    val accountMenu: HomeAccountMenuState = HomeAccountMenuState()
 )

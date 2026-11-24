@@ -40,6 +40,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.LastBaseline
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextMotion
@@ -51,6 +52,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.slouka.app.R
 import com.slouka.app.ui.views.backgrounds.IconBackgroundVisibility
 import com.slouka.app.ui.views.backgrounds.IconMotionMode
 import com.slouka.app.ui.views.backgrounds.IconSelectionMode
@@ -58,6 +60,7 @@ import com.slouka.app.ui.views.backgrounds.TopBarIconBackground
 import com.slouka.app.ui.views.backgrounds.iconBackgroundFadeSpec
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
+import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -93,7 +96,7 @@ fun ProgressTopAppBar(
         mutableStateOf(backgroundEnterDelayMillis <= 0)
     }
     LaunchedEffect(backgroundEnterDelayMillis) {
-        delay(backgroundEnterDelayMillis)
+        delay(backgroundEnterDelayMillis.milliseconds)
         backgroundReady = true
     }
 
@@ -257,7 +260,7 @@ private fun CollapsingTopBarTitle(
 @Composable
 fun ProgressTopAppBarPreview() {
     ProgressTopAppBar(
-        title = "Title",
+        title = stringResource(R.string.preview_top_bar_title),
         steps = IntArray(1) { -1 },
         showProgress = true,
         scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()

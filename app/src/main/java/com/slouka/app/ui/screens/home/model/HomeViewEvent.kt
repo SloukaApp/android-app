@@ -7,6 +7,11 @@ sealed interface HomeViewEvent {
     data class QueryChanged(val query: String) : HomeViewEvent
     data class FlameModeChanged(val mode: FlameMode) : HomeViewEvent
     data class FlameTransitionsChanged(val enabled: Boolean) : HomeViewEvent
-    data object SessionsClicked : HomeViewEvent
+    data object OpenAccountMenu : HomeViewEvent
+    data object DismissAccountMenu : HomeViewEvent
+    data object ManageAccountClicked : HomeViewEvent
+    data object AppSettingsClicked : HomeViewEvent
     data object LogoutClicked : HomeViewEvent
+    data object LogoutArrowFinished : HomeViewEvent
+    data object LogoutMenuClosed : HomeViewEvent
 }

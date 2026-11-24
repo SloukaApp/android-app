@@ -42,6 +42,7 @@ class LoginActivity : ComponentActivity() {
                             SloukaNavigation(
                                 startDestination = route,
                                 allowHome = viewModel.allowHome,
+                                animateLogout = viewModel.animateLogout,
                                 onHomeOpened = viewModel::onHomeOpened
                             )
                         }

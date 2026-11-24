@@ -2,10 +2,12 @@ package com.slouka.app.ui.screens.login.model
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.slouka.app.R
 import com.slouka.app.account.AccountRepository
 import com.slouka.app.account.exceptions.AccountRequestException
 import com.slouka.app.account.validation.AuthFormValidator
 import com.slouka.app.account.validation.FormField
+import com.slouka.app.ui.UiText
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.net.HttpURLConnection.HTTP_UNAUTHORIZED
 import javax.inject.Inject
@@ -85,10 +87,11 @@ class LoginViewModel @Inject constructor(
                             invalidAttempt = it.invalidAttempt + 1
                         )
                     }
-                    "Email or password is incorrect. Please try again."
+                    UiText.Resource(R.string.login_error_invalid_credentials)
                 } else {
                     this@LoginViewModel.mViewState.update { it.copy(isLoading = false) }
-                    requestFailure?.detailMessage ?: "Could not log in. Please try again."
+                    requestFailure?.detailMessage?.let { UiText.Raw(it) }
+                        ?: UiText.Resource(R.string.login_error_request)
                 }
                 this@LoginViewModel.mViewEffect.send(LoginViewEffect.ShowError(message))
             }

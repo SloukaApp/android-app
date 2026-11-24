@@ -5,6 +5,7 @@ import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.res.stringResource
 import kotlinx.coroutines.coroutineScope
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.Orientation
@@ -28,6 +29,7 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.text.style.TextOverflow
 import com.slouka.app.ui.screens.sessions.model.SessionDeviceType
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -54,6 +56,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.slouka.app.R
 import com.slouka.app.ui.screens.sessions.model.Session
+import com.slouka.app.ui.views.settings.GroupedListDefaults
 import kotlin.math.abs
 import kotlin.math.sign
 import kotlin.random.Random
@@ -77,6 +80,7 @@ internal fun SessionCard(
     var kickDirection by remember { mutableFloatStateOf(-1f) }
     val kick = remember { Animatable(0f) }
     val footVisibility = remember { Animatable(1f) }
+    val device = session.device.resolve()
     val scope = rememberCoroutineScope()
     val haptics = LocalHapticFeedback.current
     val density = LocalDensity.current
@@ -182,6 +186,7 @@ internal fun SessionCard(
         }
         Card(
             shape = shape,
+            colors = CardDefaults.cardColors(containerColor = GroupedListDefaults.containerColor()),
             modifier = Modifier.fillMaxWidth()
                 .graphicsLayer {
                     translationX = offset
@@ -227,13 +232,17 @@ internal fun SessionCard(
                 )
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(
-                        session.device,
+                        device,
                         style = MaterialTheme.typography.titleMedium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
-                        "${session.details} · ${if (session.isCurrent) "Current session" else session.lastActive}",
+                        stringResource(
+                            R.string.sessions_card_details,
+                            session.details.resolve(),
+                            if (session.isCurrent) stringResource(R.string.sessions_current) else session.lastActive.resolve()
+                        ),
                         style = MaterialTheme.typography.bodySmall,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -245,7 +254,7 @@ internal fun SessionCard(
                         enabled = !preparing && !kicking && !terminating,
                         onClick = { scope.launch { dismiss(-1f, prepare = true) } }
                     ) {
-                        Icon(Icons.Rounded.Close, contentDescription = "End session on ${session.device}")
+                        Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.sessions_end_on_device, device))
                     }
                 }
             }

@@ -36,6 +36,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -43,6 +45,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
+import com.slouka.app.R
 import com.slouka.app.ui.animations.authPanel
 import com.slouka.app.ui.animations.authPanelProgress
 import com.slouka.app.ui.screens.register.model.RegisterViewEffect
@@ -115,7 +118,7 @@ fun SharedTransitionScope.RegisterScreen(
                 visibilityScope = visibilityScope,
                 backgroundEnterDelayMillis = 800,
                 sharedTransitionScope = if (state.isEmailVerified) null else this,
-                title = "Register",
+                title = stringResource(R.string.register_title),
                 backgroundIconSize = 48.dp,
                 onProgressIndeterminateChanged = { progressIsIndeterminate = it },
                 showProgress = state.isLoading || state.isRegistrationAccepted ||
@@ -130,7 +133,7 @@ fun SharedTransitionScope.RegisterScreen(
                 ),
                 scrollBehavior = scrollBehavior,
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back") }
+                    IconButton(onClick = onNavigateBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.common_back)) }
                 }
             )
         }
@@ -182,13 +185,14 @@ fun SharedTransitionScope.RegisterScreenRoot(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val lifecycleOwner = LocalLifecycleOwner.current
+    val resources = LocalResources.current
 
-    LaunchedEffect(viewModel.effect, lifecycleOwner) {
+    LaunchedEffect(viewModel.effect, lifecycleOwner, resources) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             viewModel.effect.collect { effect ->
                 when (effect) {
                     is RegisterViewEffect.ShowError -> this@repeatOnLifecycle.launch {
-                        snackbarHostState.showSnackbar(effect.message)
+                        snackbarHostState.showSnackbar(effect.message.resolve(resources))
                     }
                     is RegisterViewEffect.NavigateToHome -> onNavigateToHome()
                 }
@@ -214,7 +218,7 @@ fun RegisterScreenPreview() {
             AnimatedVisibility(visible = true) {
                 RegisterScreen(
                     state = RegisterViewState(
-                        email = "example@gmail.com",
+                        email = stringResource(R.string.preview_auth_email),
                         isLoading = false
                     ),
                     event = {},

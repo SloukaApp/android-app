@@ -40,6 +40,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
@@ -49,6 +51,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
+import com.slouka.app.R
 import com.slouka.app.account.validation.FormField
 import com.slouka.app.ui.animations.authPanel
 import com.slouka.app.ui.animations.authPanelProgress
@@ -125,7 +128,7 @@ fun SharedTransitionScope.LoginScreen(
                 visibilityScope = visibilityScope,
                 backgroundEnterDelayMillis = if (arrivedFromHome) 0 else 800,
                 sharedTransitionScope = if (closingPanels || state.isLoginSuccessful) null else this,
-                title = "Log in",
+                title = stringResource(R.string.login_title),
                 showProgress = state.isLoading,
                 onProgressIndeterminateChanged = { progressIsIndeterminate = it },
                 steps = IntArray(1) { -1 },
@@ -135,7 +138,7 @@ fun SharedTransitionScope.LoginScreen(
     ) { innerPadding ->
         AuthFormLayout(
             contentPadding = innerPadding,
-            description = "Use your Slouka account to learn words. Login with it in form below!",
+            description = stringResource(R.string.login_description),
             modifier = authPanel(panelProgress, upward = false)
                 .background(MaterialTheme.colorScheme.background),
             bottomAction = {
@@ -145,7 +148,7 @@ fun SharedTransitionScope.LoginScreen(
                         focusManager.clearFocus()
                         event(LoginViewEvent.LoginClicked)
                     },
-                    text = "Log in",
+                    text = stringResource(R.string.login_title),
                     enabled = canEdit
                 )
             }
@@ -167,7 +170,7 @@ fun SharedTransitionScope.LoginScreen(
                     OutlinedTextField(
                         value = state.email,
                         onValueChange = { event(LoginViewEvent.EmailChanged(it)) },
-                        label = { Text("Email") },
+                        label = { Text(stringResource(R.string.auth_email)) },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(
                             keyboardType = KeyboardType.Email,
@@ -176,27 +179,27 @@ fun SharedTransitionScope.LoginScreen(
                         enabled = canEdit,
                         leadingIcon = { Icon(Icons.Rounded.Email, null) },
                         isError = emailError != null,
-                        supportingText = emailError?.let { message -> { Text(message) } },
+                        supportingText = emailError?.let { message -> { Text(stringResource(message)) } },
                         modifier = emailFeedback
                             .fillMaxWidth()
                             .padding(bottom = 6.dp)
                     )
 
                     PasswordField(
-                        value = if (state.isLoginSuccessful) "•".repeat(state.acceptedPasswordLength)
+                        value = if (state.isLoginSuccessful) stringResource(R.string.auth_password_mask).repeat(state.acceptedPasswordLength)
                         else state.password,
                         onValueChange = { event(LoginViewEvent.PasswordChanged(it)) },
-                        label = "Password",
+                        label = stringResource(R.string.auth_password),
                         enabled = canEdit,
                         imeAction = ImeAction.Done,
-                        error = state.fieldErrors[FormField.PASSWORD],
+                        error = state.fieldErrors[FormField.PASSWORD]?.let { stringResource(it) },
                         modifier = passwordFeedback.fillMaxWidth()
                     )
                 }
             }
 
             TextDivider(
-                text = "OR",
+                text = stringResource(R.string.login_divider_or),
                 thickness = 4.dp,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
             )
@@ -217,7 +220,7 @@ fun SharedTransitionScope.LoginScreen(
                     ),
                 enabled = canEdit
             ) {
-                Text("Create an account")
+                Text(stringResource(R.string.login_create_account))
             }
         }
     }
@@ -236,13 +239,14 @@ fun SharedTransitionScope.LoginScreenRoot(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val lifecycleOwner = LocalLifecycleOwner.current
     val snackbarHostState = remember { SnackbarHostState() }
+    val resources = LocalResources.current
 
-    LaunchedEffect(viewModel.effect, lifecycleOwner) {
+    LaunchedEffect(viewModel.effect, lifecycleOwner, resources) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             viewModel.effect.collect { effect ->
                 when (effect) {
                     is LoginViewEffect.ShowError -> this@repeatOnLifecycle.launch {
-                        snackbarHostState.showSnackbar(effect.message)
+                        snackbarHostState.showSnackbar(effect.message.resolve(resources))
                     }
                     is LoginViewEffect.NavigateToHome -> onNavigateToHome()
                 }
@@ -270,7 +274,7 @@ fun LoginScreenPreview() {
             AnimatedVisibility(visible = true) {
                 LoginScreen(
                     state = LoginViewState(
-                        email = "example@gmail.com",
+                        email = stringResource(R.string.preview_auth_email),
                         isLoading = false
                     ),
                     event = {},

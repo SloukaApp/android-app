@@ -6,7 +6,7 @@ data class LoginViewState(
     val email: String = "",
 
     val password: String = "",
-    val fieldErrors: Map<FormField, String> = emptyMap(),
+    val fieldErrors: Map<FormField, Int> = emptyMap(),
     val shakenFields: Set<FormField> = emptySet(),
     val invalidAttempt: Int = 0,
 
