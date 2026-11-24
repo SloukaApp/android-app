@@ -8,7 +8,6 @@
     <string name="auth_password">Password</string>
     <string name="auth_password_hide">Hide password</string>
     <string name="auth_password_show">Show password</string>
-    <string name="auth_password_mask" translatable="false">•</string>
     <string name="auth_error_invalid_email">Enter a valid email address.</string>
     <string name="auth_error_password_required">Enter a password.</string>
 
@@ -54,12 +53,15 @@
     <string name="home_page_dictionary">Dictionary</string>
     <string name="home_page_no_decks">No decks yet</string>
     <string name="home_page_no_words">No words yet</string>
-    <string name="home_search_hint">Search words</string>
-    <string name="home_search_clear">Clear search</string>
     <plurals name="streak_days">
         <item quantity="one">%d day streak</item>
         <item quantity="other">%d day streak</item>
     </plurals>
+
+    <!-- HomeWordSearch -->
+    <string name="home_search_hint">Search words</string>
+    <string name="home_search_clear">Clear search</string>
+    <string name="home_search_no_results">No words found</string>
 
     <!-- AccountQuickMenu and AccountScreen -->
     <string name="account_menu_open">Open account</string>

@@ -148,8 +148,6 @@ fun SloukaNavigation(
                         }
                     }
                     HomeScreenRoot(
-                        onManageAccountClick = { controller.navigate(AccountRoute) },
-                        onAppSettingsClick = { controller.navigate(AppSettingsRoute) },
                         viewModel = viewModel,
                         avatarModifier = memberAvatarSharedElement(this),
                         showPageContent = !animateOnEnter || finished,
@@ -161,6 +159,7 @@ fun SloukaNavigation(
                 }
             }
 
+            // Keep these entries for back stacks saved before the account menu owned its navigation.
             composable<SessionsRoute> {
                 HomeDestination(homeAllowed.value, returnToLogin) {
                     SessionsScreenRoot(onBack = { controller.popBackStack() })

@@ -44,6 +44,7 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -65,8 +66,10 @@ import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
@@ -86,6 +89,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 import com.slouka.app.R
+import com.slouka.app.ui.screens.home.model.AccountMenuDestination
 import com.slouka.app.ui.screens.home.model.HomeAccountMenuState
 import com.slouka.app.ui.screens.home.model.HomeViewEvent
 import com.slouka.app.ui.screens.home.model.LogoutPhase
@@ -117,13 +121,14 @@ internal fun BoxScope.AccountQuickMenu(
 
     val dispatch by rememberUpdatedState(onEvent)
     val dismiss by rememberUpdatedState {
-        if (!state.isLoggingOut) onEvent(HomeViewEvent.DismissAccountMenu)
+        if (!state.isLoggingOut && state.destination == null) onEvent(HomeViewEvent.DismissAccountMenu)
     }
     var screenOrigin by remember { mutableStateOf(Offset.Unspecified) }
     var screenWidth by remember { mutableIntStateOf(0) }
     var dialogOrigin by remember { mutableStateOf(Offset.Unspecified) }
     var headerCenter by remember { mutableStateOf(Offset.Unspecified) }
     var avatarTarget by remember { mutableStateOf(Offset.Unspecified) }
+    val destinationBounds = remember { mutableStateMapOf<AccountMenuDestination, Rect>() }
     val hasPositions = screenOrigin.isSpecified && dialogOrigin.isSpecified &&
         headerCenter.isSpecified && avatarTarget.isSpecified
     val progress = motion.asState()
@@ -156,8 +161,8 @@ internal fun BoxScope.AccountQuickMenu(
     Dialog(
         onDismissRequest = dismiss,
         properties = DialogProperties(
-            dismissOnBackPress = !state.isLoggingOut,
-            dismissOnClickOutside = !state.isLoggingOut
+            dismissOnBackPress = !state.isLoggingOut && state.destination == null,
+            dismissOnClickOutside = !state.isLoggingOut && state.destination == null
         )
     ) {
         val displayedEmail = remember { accountEmail }
@@ -200,13 +205,20 @@ internal fun BoxScope.AccountQuickMenu(
                 interactive = visible && interactive,
                 onEvent = onEvent,
                 onHeaderPositioned = { headerCenter = it.centerOnScreen() },
-                onAvatarPositioned = { avatarTarget = it.centerOnScreen() }
+                onAvatarPositioned = { avatarTarget = it.centerOnScreen() },
+                onDestinationPositioned = { destination, bounds -> destinationBounds[destination] = bounds }
             )
             if (hasPositions) {
                 FlyingAccountAvatar(progress, avatarOrigin, headerCenter, avatarTarget, dialogOrigin, insideDialog = true)
             }
         }
     }
+
+    AccountMenuDestinationDialog(
+        destination = state.destination,
+        bounds = state.destination?.let { destinationBounds[it] },
+        onDismiss = { onEvent(HomeViewEvent.AccountDestinationDismissed) }
+    )
 }
 
 @Composable
@@ -250,6 +262,7 @@ private fun AccountMenuCard(
     onEvent: (HomeViewEvent) -> Unit,
     onHeaderPositioned: (LayoutCoordinates) -> Unit = {},
     onAvatarPositioned: (LayoutCoordinates) -> Unit = {},
+    onDestinationPositioned: (AccountMenuDestination, Rect) -> Unit = { _, _ -> },
     avatar: @Composable () -> Unit = {}
 ) {
     var headerHeight by remember { mutableIntStateOf(0) }
@@ -357,28 +370,35 @@ private fun AccountMenuCard(
                     .padding(bottom = AccountMenuInset)
             ) {
                 GroupedList(
-                    count = 3,
+                    count = AccountMenuDestination.entries.size + 1,
                     modifier = Modifier.padding(horizontal = AccountMenuInset),
                     containerColor = colors.surfaceContainerHigh
                 ) { index ->
-                    when (index) {
-                        0 -> AccountMenuItem(
-                            title = stringResource(R.string.account_menu_manage),
+                    val destination = AccountMenuDestination.entries.getOrNull(index)
+                    if (destination == null) {
+                        LogoutMenuItem(state, interactive, canAct, onEvent)
+                    } else {
+                        val (title, icon) = when (destination) {
+                            AccountMenuDestination.ACCOUNT -> R.string.account_menu_manage to Icons.Rounded.ManageAccounts
+                            AccountMenuDestination.APP_SETTINGS -> R.string.app_settings_title to Icons.Rounded.Settings
+                        }
+                        AccountMenuItem(
+                            title = stringResource(title),
                             enabled = canAct,
                             leadingContent = {
-                                Icon(Icons.Rounded.ManageAccounts, null, tint = MaterialTheme.colorScheme.primary)
+                                Icon(icon, null, tint = MaterialTheme.colorScheme.primary)
                             },
-                            onClick = { onEvent(HomeViewEvent.ManageAccountClicked) }
-                        )
-                        1 -> AccountMenuItem(
-                            title = stringResource(R.string.app_settings_title),
-                            enabled = canAct,
-                            leadingContent = {
-                                Icon(Icons.Rounded.Settings, null, tint = MaterialTheme.colorScheme.primary)
+                            modifier = Modifier.onGloballyPositioned {
+                                val origin = it.localToScreen(Offset.Zero) - it.positionInWindow()
+                                if (origin.isSpecified) {
+                                    val visibleBounds = it.boundsInWindow()
+                                    val bounds = if (visibleBounds.isEmpty) it.boundsInWindow(clipBounds = false)
+                                    else visibleBounds
+                                    onDestinationPositioned(destination, bounds.translate(origin))
+                                }
                             },
-                            onClick = { onEvent(HomeViewEvent.AppSettingsClicked) }
+                            onClick = { onEvent(HomeViewEvent.AccountDestinationSelected(destination)) }
                         )
-                        else -> LogoutMenuItem(state, interactive, canAct, onEvent)
                     }
                 }
             }
@@ -449,6 +469,7 @@ private fun AccountMenuItem(
     title: String,
     enabled: Boolean,
     leadingContent: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
     trailingContent: (@Composable () -> Unit)? = null,
     onClick: () -> Unit
 ) {
@@ -459,7 +480,7 @@ private fun AccountMenuItem(
         leadingContent = leadingContent,
         trailingContent = trailingContent,
         colors = GroupedListDefaults.itemColors(),
-        modifier = Modifier.clickable(enabled = enabled, onClick = onClick)
+        modifier = modifier.clickable(enabled = enabled, onClick = onClick)
     )
 }
 
