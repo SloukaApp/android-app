@@ -33,6 +33,7 @@ fun PasswordField(
     error: String? = null
 ) {
     var isVisible by rememberSaveable { mutableStateOf(false) }
+    val showPassword = enabled && isVisible
 
     OutlinedTextField(
         value = value,
@@ -42,17 +43,17 @@ fun PasswordField(
         isError = error != null,
         supportingText = error?.let { message -> { Text(message) } },
         singleLine = true,
-        visualTransformation = if (isVisible) VisualTransformation.None else PasswordVisualTransformation(),
+        visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
         keyboardOptions = KeyboardOptions(
             keyboardType = KeyboardType.Password,
             imeAction = imeAction
         ),
         leadingIcon = { Icon(Icons.Rounded.Password, contentDescription = null) },
         trailingIcon = {
-            IconButton(onClick = { isVisible = !isVisible }) {
+            IconButton(enabled = enabled, onClick = { isVisible = !isVisible }) {
                 Icon(
-                    imageVector = if (isVisible) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility,
-                    contentDescription = stringResource(if (isVisible) R.string.auth_password_hide else R.string.auth_password_show)
+                    imageVector = if (showPassword) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility,
+                    contentDescription = stringResource(if (showPassword) R.string.auth_password_hide else R.string.auth_password_show)
                 )
             }
         },
