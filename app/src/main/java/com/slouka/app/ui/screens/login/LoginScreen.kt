@@ -37,11 +37,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.autofill.ContentType
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalAutofillManager
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentType
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
@@ -86,26 +90,35 @@ fun SharedTransitionScope.LoginScreen(
     closePanelsOnEnter: Boolean = false
 ) {
     val focusManager = LocalFocusManager.current
+    val autofillManager = LocalAutofillManager.current
     val feedback = Modifier.rememberInvalidInputFeedback(state.invalidAttempt)
     val canEdit = !state.isLoading && !state.isLoginSuccessful
     val emailError = state.fieldErrors[FormField.EMAIL]
     val emailFeedback = if (FormField.EMAIL in state.shakenFields) feedback else Modifier
     val passwordFeedback = if (FormField.PASSWORD in state.shakenFields) feedback else Modifier
-    val arrivedFromHome = rememberSaveable { closePanelsOnEnter }
-    val closingPanels = arrivedFromHome && visibilityScope.transition.currentState == EnterExitState.PreEnter
+    val skipIntro = rememberSaveable { closePanelsOnEnter }
+    val closingPanels = closePanelsOnEnter && visibilityScope.transition.currentState == EnterExitState.PreEnter
     val panelProgress = visibilityScope.authPanelProgress(
         openOnExit = state.isLoginSuccessful,
-        closeOnEnter = arrivedFromHome
+        closeOnEnter = closePanelsOnEnter
     )
-    var clubCardVisibility by rememberSaveable { mutableStateOf(arrivedFromHome) }
-    var loginButtonVisibility by rememberSaveable { mutableStateOf(arrivedFromHome) }
-    var showTopBarBackground by rememberSaveable { mutableStateOf(arrivedFromHome) }
+    var clubCardVisibility by rememberSaveable { mutableStateOf(skipIntro) }
+    var loginButtonVisibility by rememberSaveable { mutableStateOf(skipIntro) }
+    var showTopBarBackground by rememberSaveable { mutableStateOf(skipIntro) }
     var progressIsIndeterminate by remember { mutableStateOf(state.isLoading) }
+    var autofillCommitted by rememberSaveable { mutableStateOf(false) }
 
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
 
+    LaunchedEffect(state.isLoginSuccessful, autofillManager) {
+        if (state.isLoginSuccessful && !autofillCommitted) {
+            autofillManager?.commit()
+            autofillCommitted = true
+        }
+    }
+
     LaunchedEffect(Unit) {
-        if (arrivedFromHome) return@LaunchedEffect
+        if (skipIntro) return@LaunchedEffect
 
         clubCardVisibility = true
         delay(400.milliseconds)
@@ -126,7 +139,7 @@ fun SharedTransitionScope.LoginScreen(
                 modifier = authPanel(panelProgress, upward = true),
                 showBackground = showTopBarBackground,
                 visibilityScope = visibilityScope,
-                backgroundEnterDelayMillis = if (arrivedFromHome) 0 else 800,
+                backgroundEnterDelayMillis = if (skipIntro) 0 else 800,
                 sharedTransitionScope = if (closingPanels || state.isLoginSuccessful) null else this,
                 title = stringResource(R.string.login_title),
                 showProgress = state.isLoading,
@@ -161,9 +174,12 @@ fun SharedTransitionScope.LoginScreen(
                 )
             ) {
                 LoginClubCard(
-                    showSuccess = state.isLoginSuccessful && !progressIsIndeterminate,
+                    showSuccess = autofillCommitted && state.isLoginSuccessful && !progressIsIndeterminate,
                     shortcutEnabled = canEdit,
-                    onHomeShortcut = onHomeShortcut,
+                    onHomeShortcut = {
+                        autofillManager?.cancel()
+                        onHomeShortcut()
+                    },
                     onSuccessFinished = { event(LoginViewEvent.SuccessAnimationFinished) },
                     avatarModifier = memberAvatarSharedElement(visibilityScope)
                 ) {
@@ -181,19 +197,21 @@ fun SharedTransitionScope.LoginScreen(
                         isError = emailError != null,
                         supportingText = emailError?.let { message -> { Text(stringResource(message)) } },
                         modifier = emailFeedback
+                            .semantics { contentType = ContentType.Username }
                             .fillMaxWidth()
                             .padding(bottom = 6.dp)
                     )
 
                     PasswordField(
-                        value = if (state.isLoginSuccessful) stringResource(R.string.auth_password_mask).repeat(state.acceptedPasswordLength)
-                        else state.password,
+                        value = state.password,
                         onValueChange = { event(LoginViewEvent.PasswordChanged(it)) },
                         label = stringResource(R.string.auth_password),
                         enabled = canEdit,
                         imeAction = ImeAction.Done,
                         error = state.fieldErrors[FormField.PASSWORD]?.let { stringResource(it) },
-                        modifier = passwordFeedback.fillMaxWidth()
+                        modifier = passwordFeedback
+                            .semantics { contentType = ContentType.Password }
+                            .fillMaxWidth()
                     )
                 }
             }
@@ -205,7 +223,10 @@ fun SharedTransitionScope.LoginScreen(
             )
 
             OutlinedButton(
-                onClick = onRegisterClick,
+                onClick = {
+                    autofillManager?.cancel()
+                    onRegisterClick()
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 10.dp)

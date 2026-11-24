@@ -70,12 +70,7 @@ class LoginViewModel @Inject constructor(
 
             result.onSuccess {
                 this@LoginViewModel.mViewState.update {
-                    it.copy(
-                        isLoading = false,
-                        isLoginSuccessful = true,
-                        password = "",
-                        acceptedPasswordLength = current.password.length
-                    )
+                    it.copy(isLoading = false, isLoginSuccessful = true)
                 }
             }.onFailure { failure ->
                 val requestFailure = failure as? AccountRequestException
@@ -101,6 +96,7 @@ class LoginViewModel @Inject constructor(
     private fun openHome() {
         if (!this.state.value.isLoginSuccessful || this.mNavigationSent) return
         this.mNavigationSent = true
+        this.mViewState.update { it.copy(password = "") }
         this.viewModelScope.launch {
             this@LoginViewModel.mViewEffect.send(LoginViewEffect.NavigateToHome)
         }

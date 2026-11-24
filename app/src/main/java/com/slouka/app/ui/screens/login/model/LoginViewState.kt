@@ -12,6 +12,5 @@ data class LoginViewState(
 
     val isLoading: Boolean = false,
 
-    val isLoginSuccessful: Boolean = false,
-    val acceptedPasswordLength: Int = 0
+    val isLoginSuccessful: Boolean = false
 )
