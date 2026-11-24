@@ -9,8 +9,8 @@ sealed interface HomeViewEvent {
     data class FlameTransitionsChanged(val enabled: Boolean) : HomeViewEvent
     data object OpenAccountMenu : HomeViewEvent
     data object DismissAccountMenu : HomeViewEvent
-    data object ManageAccountClicked : HomeViewEvent
-    data object AppSettingsClicked : HomeViewEvent
+    data class AccountDestinationSelected(val destination: AccountMenuDestination) : HomeViewEvent
+    data object AccountDestinationDismissed : HomeViewEvent
     data object LogoutClicked : HomeViewEvent
     data object LogoutArrowFinished : HomeViewEvent
     data object LogoutMenuClosed : HomeViewEvent

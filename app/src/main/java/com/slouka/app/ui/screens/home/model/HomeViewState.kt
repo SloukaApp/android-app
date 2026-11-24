@@ -1,6 +1,7 @@
 package com.slouka.app.ui.screens.home.model
 
 import com.slouka.app.ui.views.decos.FlameMode
+import com.slouka.app.words.WordSearchResult
 
 data class HomeViewState(
     val page: HomePage = HomePage.HOME,
@@ -9,5 +10,6 @@ data class HomeViewState(
     val animateFlameChanges: Boolean = true,
     val streakDays: Int = 0,
     val accountEmail: String? = null,
-    val accountMenu: HomeAccountMenuState = HomeAccountMenuState()
+    val accountMenu: HomeAccountMenuState = HomeAccountMenuState(),
+    val searchResults: List<WordSearchResult> = emptyList()
 )

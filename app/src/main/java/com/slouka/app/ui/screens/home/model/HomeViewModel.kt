@@ -8,14 +8,15 @@ import com.slouka.app.account.AccountRepository
 import com.slouka.app.account.exceptions.AccountRequestException
 import com.slouka.app.settings.AppSettingsRepository
 import com.slouka.app.ui.UiText
+import com.slouka.app.words.WordSearchRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -23,7 +24,8 @@ import javax.inject.Inject
 class HomeViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val accountRepository: AccountRepository,
-    private val appSettingsRepository: AppSettingsRepository
+    private val appSettingsRepository: AppSettingsRepository,
+    private val wordSearchRepository: WordSearchRepository
 ) : ViewModel() {
     private val page = savedStateHandle.getMutableStateFlow("home_page", HomePage.HOME).apply {
         if (value == HomePage.ACCOUNT) value = HomePage.HOME
@@ -31,10 +33,17 @@ class HomeViewModel @Inject constructor(
     private val query = savedStateHandle.getMutableStateFlow("home_query", "")
     private val mAccountMenu = MutableStateFlow(HomeAccountMenuState())
     val accountMenu = this.mAccountMenu.asStateFlow()
-    private val mViewEffect = Channel<HomeViewEffect>(Channel.BUFFERED)
 
-    private val pageState = combine(page, query, appSettingsRepository.settings) { page, query, settings ->
-        HomeViewState(page, query, settings.flameMode, settings.animateFlameChanges)
+    private val searchState = query.map { it to wordSearchRepository.search(it) }
+    private val pageState = combine(page, searchState, appSettingsRepository.settings) { page, search, settings ->
+        val (query, results) = search
+        HomeViewState(
+            page = page,
+            query = query,
+            flameMode = settings.flameMode,
+            animateFlameChanges = settings.animateFlameChanges,
+            searchResults = results
+        )
     }
 
     val state = combine(pageState, mAccountMenu, accountRepository.accountEmail) { pageState, menu, email ->
@@ -47,11 +56,10 @@ class HomeViewModel @Inject constructor(
             query = query.value,
             flameMode = appSettingsRepository.settings.value.flameMode,
             animateFlameChanges = appSettingsRepository.settings.value.animateFlameChanges,
-            accountEmail = accountRepository.accountEmail.value
+            accountEmail = accountRepository.accountEmail.value,
+            searchResults = wordSearchRepository.search(query.value)
         )
     )
-    val effect = mViewEffect.receiveAsFlow()
-
     fun onEvent(event: HomeViewEvent) {
         when (event) {
             is HomeViewEvent.PageSelected -> page.value = event.page
@@ -61,9 +69,15 @@ class HomeViewModel @Inject constructor(
             HomeViewEvent.OpenAccountMenu -> if (!this.mAccountMenu.value.isOpen) {
                 this.mAccountMenu.value = HomeAccountMenuState(isOpen = true)
             }
-            HomeViewEvent.DismissAccountMenu -> this.dismissAccountMenu()
-            HomeViewEvent.ManageAccountClicked -> this.openAccountDestination(HomeViewEffect.NavigateToAccount)
-            HomeViewEvent.AppSettingsClicked -> this.openAccountDestination(HomeViewEffect.NavigateToAppSettings)
+            HomeViewEvent.DismissAccountMenu -> this.mAccountMenu.update { menu ->
+                if (!menu.isLoggingOut && menu.destination == null) HomeAccountMenuState() else menu
+            }
+            is HomeViewEvent.AccountDestinationSelected -> this.mAccountMenu.update { menu ->
+                if (menu.isOpen && !menu.isLoggingOut && menu.destination == null) {
+                    menu.copy(destination = event.destination)
+                } else menu
+            }
+            HomeViewEvent.AccountDestinationDismissed -> this.mAccountMenu.update { it.copy(destination = null) }
             HomeViewEvent.LogoutClicked -> this.logout()
             HomeViewEvent.LogoutArrowFinished -> {
                 val menu = this.mAccountMenu.value
@@ -77,22 +91,9 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    private fun dismissAccountMenu(): Boolean {
-        val menu = this.mAccountMenu.value
-        if (!menu.isOpen || menu.isLoggingOut) return false
-
-        this.mAccountMenu.value = HomeAccountMenuState()
-        return true
-    }
-
-    private fun openAccountDestination(effect: HomeViewEffect) {
-        if (!this.dismissAccountMenu()) return
-        this.viewModelScope.launch { this@HomeViewModel.mViewEffect.send(effect) }
-    }
-
     private fun logout() {
         val menu = this.mAccountMenu.value
-        if (!menu.isOpen || menu.isLoggingOut) return
+        if (!menu.isOpen || menu.isLoggingOut || menu.destination != null) return
 
         this.mAccountMenu.value = menu.copy(logoutPhase = LogoutPhase.REQUESTING, logoutError = null)
 

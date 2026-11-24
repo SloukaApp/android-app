@@ -9,16 +9,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -26,7 +21,6 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
@@ -34,7 +28,6 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -52,13 +45,9 @@ import androidx.compose.ui.semantics.hideFromAccessibility
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.repeatOnLifecycle
 import com.slouka.app.R
 import com.slouka.app.ui.screens.home.model.HomePage
-import com.slouka.app.ui.screens.home.model.HomeViewEffect
 import com.slouka.app.ui.screens.home.model.HomeViewEvent
 import com.slouka.app.ui.screens.home.model.HomeViewModel
 import com.slouka.app.ui.screens.home.model.HomeViewState
@@ -66,6 +55,7 @@ import com.slouka.app.ui.screens.home.parts.AccountQuickMenu
 import com.slouka.app.ui.screens.home.parts.DecksPageView
 import com.slouka.app.ui.screens.home.parts.DictionaryPageView
 import com.slouka.app.ui.screens.home.parts.HomePageView
+import com.slouka.app.ui.screens.home.parts.HomeWordSearch
 import com.slouka.app.ui.screens.home.parts.centerOnScreen
 import com.slouka.app.ui.theme.SloukaTheme
 import com.slouka.app.ui.views.bars.AnimatedNavigationIcon
@@ -152,10 +142,11 @@ fun HomeScreen(
                         .revealHomeContent(appearance, contentVisible, startOffset = 32.dp)
                         .imePadding()
                 ) {
-                    HomeSearchField(
+                    HomeWordSearch(
                         query = state.query,
+                        results = state.searchResults,
                         onQueryChange = { event(HomeViewEvent.QueryChanged(it)) },
-                        enabled = contentVisible,
+                        enabled = ready && isInteractive,
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
                     NavigationBar {
@@ -250,42 +241,8 @@ private fun StreakIndicator(days: Int, modifier: Modifier = Modifier) {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun HomeSearchField(
-    query: String,
-    onQueryChange: (String) -> Unit,
-    enabled: Boolean,
-    modifier: Modifier = Modifier
-) {
-    val focusManager = LocalFocusManager.current
-    SearchBarDefaults.InputField(
-        query = query,
-        onQueryChange = onQueryChange,
-        onSearch = { focusManager.clearFocus() },
-        expanded = false,
-        onExpandedChange = {},
-        enabled = enabled,
-        placeholder = { Text(stringResource(R.string.home_search_hint)) },
-        leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
-        trailingIcon = {
-            if (query.isNotEmpty()) {
-                IconButton(enabled = enabled, onClick = { onQueryChange("") }) {
-                    Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.home_search_clear))
-                }
-            }
-        },
-        colors = SearchBarDefaults.colors().inputFieldColors,
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-    )
-}
-
 @Composable
 fun HomeScreenRoot(
-    onManageAccountClick: () -> Unit,
-    onAppSettingsClick: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel(),
     avatarModifier: Modifier = Modifier,
     showPageContent: Boolean = true,
@@ -295,21 +252,6 @@ fun HomeScreenRoot(
     keepAvatarInPlace: Boolean = false
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val navigateToAccount by rememberUpdatedState(onManageAccountClick)
-    val navigateToAppSettings by rememberUpdatedState(onAppSettingsClick)
-    val allowNavigation by rememberUpdatedState(isInteractive)
-    val lifecycleOwner = LocalLifecycleOwner.current
-
-    LaunchedEffect(viewModel, lifecycleOwner) {
-        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
-            viewModel.effect.collect { effect ->
-                when (effect) {
-                    HomeViewEffect.NavigateToAccount -> if (allowNavigation) navigateToAccount()
-                    HomeViewEffect.NavigateToAppSettings -> if (allowNavigation) navigateToAppSettings()
-                }
-            }
-        }
-    }
 
     HomeScreen(
         state = state,
